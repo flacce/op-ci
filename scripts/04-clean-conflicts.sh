@@ -25,21 +25,30 @@ cd openwrt
 echo "[1/5] 删除 VPN/代理类冲突插件..."
 # - Bypass：科学上网插件（与 HomeProxy 冲突）
 # - SSR Plus：ShadowsocksR 插件（已过时）
+# - Passwall/Passwall2：代理插件（依赖 v2ray-geodata）
 # - IPsec VPN：VPN 服务器插件
 # - Trojan Plus：Trojan 代理
-# - Strongswan：IPsec VPN 后端
+# - Strongswan：IPsec VPN 后端（包括 swanctl）
 # - VSSR：V2Ray/SSR 集成插件
 # - FcHomo：代理插件
 # - Nikki：代理相关
+# - DAE/DAED：代理加速引擎（依赖 v2ray-geodata）
 find feeds/ -name "luci-app-bypass" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "luci-app-ssr-plus" -exec rm -rf {} + 2>/dev/null || true
+find feeds/ -name "luci-app-passwall" -exec rm -rf {} + 2>/dev/null || true
+find feeds/ -name "luci-app-passwall2" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "luci-app-ipsec-server" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "luci-app-ipsec-vpnd" -exec rm -rf {} + 2>/dev/null || true
+find feeds/ -name "luci-app-strongswan-swanctl" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "trojan-plus" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "strongswan*" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "luci-app-vssr" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "luci-app-fchomo" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "nikki" -exec rm -rf {} + 2>/dev/null || true
+find feeds/ -name "dae" -exec rm -rf {} + 2>/dev/null || true
+find feeds/ -name "daed" -exec rm -rf {} + 2>/dev/null || true
+find feeds/ -name "luci-app-dae" -exec rm -rf {} + 2>/dev/null || true
+find feeds/ -name "luci-app-daed" -exec rm -rf {} + 2>/dev/null || true
 
 # ----------------------------------------------------------------------------
 # 2️⃣ 删除多拨/负载均衡类冲突插件
