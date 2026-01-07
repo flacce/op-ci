@@ -43,6 +43,14 @@ env:
   TZ: Asia/Shanghai                                     # 时区（用于日志时间戳）
 
 # ============================================================================
+# 权限配置
+# ============================================================================
+# 允许 workflow 创建 Release 和上传文件
+# ============================================================================
+permissions:
+  contents: write  # 允许创建 Release、上传文件
+
+# ============================================================================
 # 构建任务
 # ============================================================================
 jobs:
@@ -284,7 +292,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       if: steps.organize.outputs.status == 'success'
       with:
-        tag_name: v-${{ steps.organize.outputs.BUILD_DATE }}
+        tag_name: op-${{ steps.organize.outputs.BUILD_DATE }}
         name: ImmortalWrt IPQ60xx 固件 ${{ steps.organize.outputs.BUILD_DATE }}
         body: |
           ## 📦 ImmortalWrt 固件发布
