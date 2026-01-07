@@ -1,0 +1,81 @@
+name: 🧪 测试固件整理脚本
+
+on:
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 🏗️ 创建模拟固件目录结构
+        run: |
+          echo "创建模拟的 OpenWrt 构建输出目录..."
+          mkdir -p openwrt/bin/targets/qualcommax/ipq60xx
+          cd openwrt/bin/targets/qualcommax/ipq60xx
+          
+          # 创建模拟的固件文件
+          echo "Creating mock firmware files..."
+          touch immortalwrt-qualcommax-ipq60xx-jdcloud_re-cs-02-squashfs-sysupgrade.bin
+          touch immortalwrt-qualcommax-ipq60xx-jdcloud_re-cs-02-squashfs-factory.bin
+          touch immortalwrt-qualcommax-ipq60xx-jdcloud_re-ss-01-squashfs-sysupgrade.bin
+          touch immortalwrt-qualcommax-ipq60xx-jdcloud_re-ss-01-squashfs-factory.bin
+          
+          # 创建模拟的元数据文件
+          echo "Creating mock metadata files..."
+          touch config.buildinfo
+          touch feeds.buildinfo
+          touch immortalwrt-qualcommax-ipq60xx.manifest
+          touch sha256sums
+          touch version.buildinfo
+          
+          # 创建 packages 目录（用于测试删除功能）
+          mkdir -p packages/test
+          touch packages/test/dummy.ipk
+          
+          echo "模拟目录结构创建完成！"
+          echo ""
+          echo "目录内容："
+          ls -lhR
+      
+      - name: 📦 测试固件整理脚本
+        run: |
+          # 切换到正确的目录
+          cd $GITHUB_WORKSPACE
+          
+          # 运行整理脚本
+          bash scripts/08-organize-files.sh
+      
+      - name: 📊 验证结果
+        run: |
+          cd openwrt/bin/targets/qualcommax/ipq60xx
+          
+          echo "========================================="
+          echo "验证结果："
+          echo "========================================="
+          
+          # 检查固件文件数量
+          BIN_COUNT=$(find . -name "*.bin" | wc -l)
+          echo "找到 .bin 文件数量: $BIN_COUNT"
+          
+          # 检查 packages 目录是否被删除
+          if [ -d "packages" ]; then
+            echo "❌ packages 目录仍然存在（应该被删除）"
+            exit 1
+          else
+            echo "✅ packages 目录已正确删除"
+          fi
+          
+          # 验证固件文件是否存在
+          if [ $BIN_COUNT -ge 4 ]; then
+            echo "✅ 测试通过：找到所有固件文件！"
+          else
+            echo "❌ 测试失败：固件文件数量不正确"
+            exit 1
+          fi
+          
+          echo ""
+          echo "所有测试通过！✅"
