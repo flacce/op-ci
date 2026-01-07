@@ -2,16 +2,17 @@
 #
 # ============================================================================
 # 脚本名称: 08-organize-files.sh
-# 功能描述: 整理固件文件（支持多设备配置）
+# 功能描述: 整理固件文件（简化版）
 # ============================================================================
 # 作用:
-#   1. 查找所有固件输出目录
-#   2. 删除 packages 目录（只保留固件文件，节省空间）
-#   3. 将所有固件文件集中到一个目录
-#   4. 输出固件文件路径
+#   1. 进入固件输出目录
+#   2. 删除 packages 目录（节省空间）
+#   3. 输出固件目录路径
 # ============================================================================
 # 输出:
 #   - FIRMWARE_DIR: 固件文件所在目录的绝对路径
+#   - BUILD_DATE: 当前日期（用于 Release 命名）
+#   - status: success（成功标记）
 # ============================================================================
 #
 
@@ -24,47 +25,59 @@ echo "========================================="
 # 进入 OpenWrt 源码目录
 cd openwrt
 
-# 查找固件输出目录（支持多设备配置）
-TARGET_DIR=$(find bin/targets -type d -name "qualcommax" -o -name "ipq60xx" | head -1)
-if [ -z "$TARGET_DIR" ]; then
+# 找到固件输出目录（bin/targets/架构/型号）
+FIRMWARE_PATH=$(find bin/targets -type d -maxdepth 2 | grep -E "bin/targets/[^/]+/[^/]+$" | head -1)
+
+if [ -z "$FIRMWARE_PATH" ]; then
     echo "❌ 错误：未找到固件输出目录！"
     exit 1
 fi
 
-# 找到架构目录
-ARCH_DIR=$(find bin/targets -type d -maxdepth 2 | grep -E "bin/targets/[^/]+/[^/]+$" | head -1)
-echo "[1/3] 固件架构目录: $ARCH_DIR"
+echo "[1/4] 固件目录: $FIRMWARE_PATH"
 
-# 创建固件收集目录
-FIRMWARE_DIR="$PWD/$ARCH_DIR/firmware"
-mkdir -p "$FIRMWARE_DIR"
+# 删除 packages 目录（节省空间）
+echo "[2/4] 删除 packages 目录..."
+find "$FIRMWARE_PATH" -type d -name "packages" -exec rm -rf {} + 2>/dev/null || true
 
-echo "[2/3] 收集所有固件文件..."
-# 查找所有设备的固件文件（.bin, .img, .tar.gz 等）并复制到收集目录
-find "$ARCH_DIR" -type f \( -name "*.bin" -o -name "*.img" -o -name "*.tar.gz" -o -name "*.manifest" -o -name "*sysupgrade*" -o -name "*factory*" \) -exec cp {} "$FIRMWARE_DIR/" \;
+# 获取绝对路径
+FIRMWARE_DIR="$PWD/$FIRMWARE_PATH"
 
-# 同时复制元数据文件
-find "$ARCH_DIR" -maxdepth 1 -type f \( -name "*.buildinfo" -o -name "sha256sums" -o -name "version.buildinfo" \) -exec cp {} "$FIRMWARE_DIR/" \; 2>/dev/null || true
-
-echo "[3/3] 删除 packages 目录（节省空间）..."
-find "$ARCH_DIR" -type d -name "packages" -exec rm -rf {} + 2>/dev/null || true
-
-# 输出固件文件列表
-echo ""
-echo "========================================="
-echo "固件文件列表:"
+# 列出所有固件文件
+echo "[3/4] 固件文件列表:"
 echo "========================================="
 ls -lh "$FIRMWARE_DIR"
 
 # 统计固件数量
-FIRMWARE_COUNT=$(find "$FIRMWARE_DIR" -type f \( -name "*.bin" -o -name "*.img" \) | wc -l)
+FIRMWARE_COUNT=$(find "$FIRMWARE_DIR" -type f \( -name "*.bin" -o -name "*.img" -o -name "*sysupgrade*" -o -name "*factory*" \) | wc -l)
+TOTAL_FILES=$(ls -1 "$FIRMWARE_DIR" | wc -l)
+
 echo ""
 echo "📊 统计信息："
 echo "  - 固件映像数量: $FIRMWARE_COUNT"
-echo "  - 总文件数: $(ls -1 "$FIRMWARE_DIR" | wc -l)"
+echo "  - 总文件数: $TOTAL_FILES"
+echo "  - 固件目录: $FIRMWARE_DIR"
 
-# 将固件目录路径输出到环境变量（供 GitHub Actions 使用）
+# 如果没有找到固件映像，给出警告
+if [ "$FIRMWARE_COUNT" -eq 0 ]; then
+    echo ""
+    echo "⚠️ 警告：未找到固件映像文件！"
+    echo "可能的原因："
+    echo "1. 编译配置问题（未选择生成固件映像）"
+    echo "2. 编译失败但未报错"
+    echo ""
+    echo "正在检查子目录..."
+    find "$FIRMWARE_DIR" -type f -name "*.bin" -o -name "*.img" | head -20
+fi
+
+# 获取当前日期（用于 Release 命名）
+BUILD_DATE=$(TZ=Asia/Shanghai date '+%Y-%m-%d')
+
+echo ""
+echo "[4/4] 输出环境变量..."
+# 输出环境变量供 GitHub Actions 使用
 echo "FIRMWARE_DIR=$FIRMWARE_DIR"
+echo "BUILD_DATE=$BUILD_DATE"
+echo "status=success"
 
 echo ""
 echo "✅ 固件整理完成！"
