@@ -35,25 +35,34 @@ MAKEFILE="$OPENWRT_DIR/package/custom/sing-box/Makefile"
 
 echo "📝 移除 sing-box full 版本，只保留 tiny..."
 
-# 1. 移除 sing-box full 版本的 Package 定义
+# 1. 先保存原始的 description
+ORIGINAL_DESC=$(sed -n '/^define Package\/sing-box\/description$/,/^endef$/p' "$MAKEFILE")
+
+# 2. 移除 sing-box full 版本的 Package 定义
 sed -i '/^define Package\/sing-box$/,/^endef$/d' "$MAKEFILE"
 
-# 2. 移除 sing-box full 版本的 description
+# 3. 移除 sing-box full 版本的 description
 sed -i '/^define Package\/sing-box\/description$/,/^endef$/d' "$MAKEFILE"
 
-# 3. 移除 sing-box full 版本的 config 菜单
+# 4. 移除 sing-box full 版本的 config 菜单
 sed -i '/^define Package\/sing-box\/config$/,/^endef$/d' "$MAKEFILE"
 
-# 4. 修改 sing-box-tiny，移除 PROVIDES 和 CONFLICTS
+# 5. 将 sing-box-tiny 重命名为 sing-box
+sed -i 's/Package\/sing-box-tiny/Package\/sing-box/g' "$MAKEFILE"
+sed -i 's/BuildPackage,sing-box-tiny/BuildPackage,sing-box/g' "$MAKEFILE"
+
+# 6. 移除 PROVIDES 和 CONFLICTS（避免循环依赖）
 sed -i 's/PROVIDES:=sing-box/# PROVIDES:=sing-box/' "$MAKEFILE"
 sed -i 's/CONFLICTS:=sing-box/# CONFLICTS:=sing-box/' "$MAKEFILE"
 
-# 5. 移除 BuildPackage sing-box 调用，只保留 sing-box-tiny
-sed -i '/$(eval $(call BuildPackage,sing-box))$/d' "$MAKEFILE"
+# 7. 移除 BuildPackage sing-box-tiny 调用（因为已经重命名为 sing-box）
+sed -i '/$(eval $(call BuildPackage,sing-box-tiny))$/d' "$MAKEFILE"
 
-# 6. 将 sing-box-tiny 重命名为 sing-box（提供兼容性）
-sed -i 's/Package\/sing-box-tiny/Package\/sing-box/g' "$MAKEFILE"
-sed -i 's/BuildPackage,sing-box-tiny/BuildPackage,sing-box/g' "$MAKEFILE"
+# 8. 修复 golang-package.mk 的路径（从相对路径改为绝对路径）
+sed -i 's|include ../../lang/golang/golang-package.mk|include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk|' "$MAKEFILE"
+
+# 9. 修复 description 自引用问题
+sed -i '/^Package\/sing-box\/description:=$(Package\/sing-box\/description)$/d' "$MAKEFILE"
 
 echo "✅ sing-box Makefile 修复完成！"
 echo ""
