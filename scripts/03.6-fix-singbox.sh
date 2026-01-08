@@ -16,15 +16,22 @@ echo "========================================="
 echo "🔧 修复 sing-box Makefile..."
 echo "========================================="
 
-# 进入 OpenWrt 源码目录
-cd openwrt
-
-MAKEFILE="package/custom/sing-box/Makefile"
-
-if [ ! -f "$MAKEFILE" ]; then
-    echo "⚠️  未找到 $MAKEFILE，跳过修复"
+# 智能检测当前目录
+if [ -f "package/custom/sing-box/Makefile" ]; then
+    # 已经在 openwrt 目录中
+    OPENWRT_DIR="."
+elif [ -f "openwrt/package/custom/sing-box/Makefile" ]; then
+    # 在项目根目录或 build 目录
+    OPENWRT_DIR="openwrt"
+elif [ -f "build/openwrt/package/custom/sing-box/Makefile" ]; then
+    # 在项目根目录
+    OPENWRT_DIR="build/openwrt"
+else
+    echo "⚠️  未找到 sing-box Makefile，跳过修复"
     exit 0
 fi
+
+MAKEFILE="$OPENWRT_DIR/package/custom/sing-box/Makefile"
 
 echo "📝 移除 sing-box full 版本，只保留 tiny..."
 
