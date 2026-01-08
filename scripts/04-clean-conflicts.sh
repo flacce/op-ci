@@ -119,6 +119,13 @@ rm -rf feeds/luci/applications/luci-app-homeproxy 2>/dev/null || true
 rm -rf feeds/luci/applications/luci-app-passwall 2>/dev/null || true
 rm -rf feeds/luci/applications/luci-app-passwall2 2>/dev/null || true
 
+echo "✅ 已删除以下问题包："
+echo "  - GNUnet (编译耗时)"
+echo "  - OnionShare CLI (依赖缺失)"
+echo "  - AdGuardHome feeds 版本 (使用 Git 版本)"
+echo "  - HomeProxy feeds 版本 (使用 VIKINGYFY 版本)"
+echo "  - PassWall 系列 (避免冲突)"
+
 # 刷新 feeds 索引，确保清理生效
 echo "刷新 feeds 索引..."
 ./scripts/feeds update -i
