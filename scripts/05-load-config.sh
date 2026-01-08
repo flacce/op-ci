@@ -23,8 +23,19 @@ echo "========================================="
 echo "⚙️ 加载配置并强制启用核心功能..."
 echo "========================================="
 
-# 进入 OpenWrt 源码目录
-cd openwrt
+# 智能检测 OpenWrt 目录
+if [ -d "openwrt" ]; then
+    cd openwrt
+    echo "📂 进入 openwrt 目录"
+elif [ -f "feeds.conf.default" ]; then
+    echo "📂 当前已在 openwrt 目录"
+else
+    # 尝试在 build/openwrt 查找 (适配本地构建)
+    if [ -d "build/openwrt" ]; then
+        cd build/openwrt
+        echo "📂 进入 build/openwrt 目录"
+    fi
+fi
 
 # 将仓库中的配置文件复制到 OpenWrt 源码目录并重命名为 .config
 CONFIG_FILE="${CONFIG_FILE:-seed.config}"
