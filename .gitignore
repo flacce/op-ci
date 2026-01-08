@@ -1,0 +1,18 @@
+# Build directory (local builds)
+build/
+
+# OpenWrt build artifacts
+*.bin
+*.img
+*.tar.gz
+*.manifest
+*.buildinfo
+sha256sums
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

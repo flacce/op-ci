@@ -19,9 +19,9 @@ echo "========================================="
 echo "🚀 ImmortalWrt 本地构建"
 echo "========================================="
 
-# 工作目录（仓库所在目录的上级）
-WORK_DIR="$(cd "$(dirname "$0")/.." && pwd)/immortalwrt-build"
+# 工作目录（仓库内的 build/ 目录）
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+WORK_DIR="$REPO_DIR/build"
 
 echo "📁 仓库目录: $REPO_DIR"
 echo "📁 工作目录: $WORK_DIR"
