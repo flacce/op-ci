@@ -50,10 +50,16 @@ if [ -d "package/custom/luci-app-easytier" ]; then
 fi
 git clone --depth=1 https://github.com/EasyTier/luci-app-easytier.git package/custom/luci-app-easytier
 
-echo "[5/5] 克隆 Aurora 主题（现代化界面）..."
+echo "[5/6] 克隆 Aurora 主题（现代化界面）..."
 if [ -d "package/custom/luci-theme-aurora" ]; then
     rm -rf package/custom/luci-theme-aurora
 fi
 git clone --depth=1 https://github.com/eamonxg/luci-theme-aurora.git package/custom/luci-theme-aurora
+
+echo "[6/6] 克隆 sing-box（最新版本）..."
+if [ -d "package/custom/sing-box" ]; then
+    rm -rf package/custom/sing-box
+fi
+git clone --depth=1 https://github.com/SagerNet/sing-box.git package/custom/sing-box
 
 echo "✅ 第三方插件克隆完成！"
