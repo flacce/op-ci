@@ -50,14 +50,21 @@ if [ -d "package/custom/easytier" ]; then
 fi
 git clone --depth=1 https://github.com/EasyTier/luci-app-easytier.git package/custom/easytier
 
-echo "[5/6] 克隆 sing-box（代理核心）..."
+echo "[5/6] 克隆 sing-box（代理核心 - OpenWrt 包定义）..."
 if [ -d "package/custom/sing-box" ]; then
     rm -rf package/custom/sing-box
 fi
-# 从 OpenWrt 官方 packages 克隆 sing-box（ImmortalWrt feeds 中不包含此包）
-git clone --depth=1 --branch=master --single-branch https://github.com/openwrt/packages.git package/custom/openwrt-packages-temp
-mv package/custom/openwrt-packages-temp/net/sing-box package/custom/sing-box
-rm -rf package/custom/openwrt-packages-temp
+# 从 OpenWrt 官方 packages 使用 sparse-checkout 只获取 sing-box 包定义
+mkdir -p package/custom/sing-box
+cd package/custom/sing-box
+git init
+git remote add origin https://github.com/openwrt/packages.git
+git config core.sparseCheckout true
+echo "net/sing-box/*" >> .git/info/sparse-checkout
+git pull --depth=1 origin master
+mv net/sing-box/* .
+rm -rf net .git
+cd ../../..
 
 echo "[6/6] 克隆 Aurora 主题（现代化界面）..."
 if [ -d "package/custom/luci-theme-aurora" ]; then
