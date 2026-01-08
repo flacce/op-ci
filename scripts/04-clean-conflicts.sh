@@ -102,10 +102,13 @@ echo "[5/5] 删除其他问题依赖..."
 # - GNUnet：去中心化网络框架（编译时间过长）
 # - OnionShare CLI：暗网文件分享工具（依赖复杂）
 # - sing-box (feeds)：将使用 Git 最新版本替代
+# - adguardhome (feeds)：将使用 Git 最新版本替代
 find feeds/ -name "gnunet*" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "onionshare-cli" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "sing-box" -exec rm -rf {} + 2>/dev/null || true
 find feeds/ -name "luci-app-sing-box" -exec rm -rf {} + 2>/dev/null || true
+find feeds/ -name "adguardhome" -exec rm -rf {} + 2>/dev/null || true
+find feeds/ -name "luci-app-adguardhome" -exec rm -rf {} + 2>/dev/null || true
 
 # 刷新 feeds 索引，确保清理生效
 echo "刷新 feeds 索引..."
