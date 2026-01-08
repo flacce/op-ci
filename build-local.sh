@@ -56,30 +56,15 @@ cd openwrt
 
 # 步骤 3: 更新 Feeds
 echo ""
-echo "🔄 步骤 3: 更新 Feeds"
-./scripts/feeds update -a
-
-# 步骤 4: 克隆第三方插件
+# 步骤 3: 准备软件包环境
 echo ""
-echo "📦 步骤 4: 克隆第三方插件"
-mkdir -p package/custom
-
-for plugin in "luci-app-lucky" "homeproxy" "luci-app-adguardhome" "luci-app-easytier" "luci-theme-aurora" "sing-box"; do
-    [ -d "package/custom/$plugin" ] && rm -rf "package/custom/$plugin"
-done
-
-git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/custom/luci-app-lucky
-git clone --depth=1 https://github.com/VIKINGYFY/homeproxy.git package/custom/homeproxy
-git clone --depth=1 https://github.com/rufengsuixing/luci-app-adguardhome.git package/custom/luci-app-adguardhome
-git clone --depth=1 https://github.com/EasyTier/luci-app-easytier.git package/custom/luci-app-easytier
-git clone --depth=1 https://github.com/eamonxg/luci-theme-aurora.git package/custom/luci-theme-aurora
-git clone --depth=1 https://github.com/SagerNet/sing-box.git package/custom/sing-box
+echo "📦 步骤 3: 准备软件包环境 (Feeds & Custom Plugins)"
+bash "$REPO_DIR/scripts/03-prepare-packages.sh"
 
 # 步骤 5: 清理冲突
 echo ""
 echo "🧹 步骤 5: 清理冲突插件"
-find feeds/ -name "sing-box" -o -name "adguardhome" -o -name "luci-app-adguardhome" | xargs rm -rf 2>/dev/null || true
-./scripts/feeds update -i
+bash "$REPO_DIR/scripts/04-clean-conflicts.sh"
 
 # 步骤 6: 安装 Feeds
 echo ""
@@ -89,8 +74,9 @@ echo "📥 步骤 6: 安装 Feeds"
 # 步骤 7: 加载配置
 echo ""
 echo "⚙️  步骤 7: 加载配置文件"
-cp "$REPO_DIR/$CONFIG_FILE" .config
-make defconfig
+# 使用加载配置脚本（包含 APK/OPKG 处理）
+export GITHUB_WORKSPACE="$REPO_DIR" # 模拟 GitHub Workspace
+bash "$REPO_DIR/scripts/05-load-config.sh"
 
 # 步骤 8: 下载依赖
 echo ""
@@ -108,5 +94,5 @@ echo "========================================="
 echo -e "${GREEN}✅ 构建完成！${NC}"
 echo "========================================="
 echo "固件位置:"
-find bin/targets -name "*.bin" -o -name "*.img" 2>/dev/null | head -10
+find bin/targets -name "*.bin" -o -name "*.img.gz" 2>/dev/null | head -10
 echo ""
