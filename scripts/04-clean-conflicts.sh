@@ -104,14 +104,20 @@ echo "[5/5] 删除其他问题依赖..."
 # - adguardhome (feeds)：将使用 Git 最新版本替代
 # - homeproxy (feeds)：删除以使用 VIKINGYFY 自定义版本
 # - passwall：代理插件（已在步骤 1 删除，此处再次确认）
-find feeds/ -name "gnunet*" -exec rm -rf {} + 2>/dev/null || true
-find feeds/ -name "onionshare-cli" -exec rm -rf {} + 2>/dev/null || true
-find feeds/ -name "adguardhome" -exec rm -rf {} + 2>/dev/null || true
-find feeds/ -name "luci-app-adguardhome" -exec rm -rf {} + 2>/dev/null || true
-find feeds/ -name "homeproxy" -exec rm -rf {} + 2>/dev/null || true
-find feeds/ -name "luci-app-homeproxy" -exec rm -rf {} + 2>/dev/null || true
-find feeds/ -name "luci-app-passwall" -exec rm -rf {} + 2>/dev/null || true
-find feeds/ -name "luci-app-passwall2" -exec rm -rf {} + 2>/dev/null || true
+
+# 使用更可靠的删除方法
+rm -rf feeds/packages/net/adguardhome 2>/dev/null || true
+rm -rf feeds/luci/applications/luci-app-adguardhome 2>/dev/null || true
+rm -rf feeds/packages/net/gnunet* 2>/dev/null || true
+rm -rf feeds/packages/net/onionshare-cli 2>/dev/null || true
+
+# 删除 feeds homeproxy（使用自定义版本）
+rm -rf feeds/packages/net/homeproxy 2>/dev/null || true
+rm -rf feeds/luci/applications/luci-app-homeproxy 2>/dev/null || true
+
+# 删除 passwall（避免冲突）
+rm -rf feeds/luci/applications/luci-app-passwall 2>/dev/null || true
+rm -rf feeds/luci/applications/luci-app-passwall2 2>/dev/null || true
 
 # 刷新 feeds 索引，确保清理生效
 echo "刷新 feeds 索引..."
