@@ -69,7 +69,7 @@ bash "$REPO_DIR/scripts/04-clean-conflicts.sh"
 # 步骤 6: 安装 Feeds
 echo ""
 echo "📥 步骤 6: 安装 Feeds"
-./scripts/feeds install -a
+bash "$REPO_DIR/scripts/install-feeds.sh"
 
 # 步骤 7: 加载配置
 echo ""
