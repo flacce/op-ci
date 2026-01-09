@@ -50,8 +50,8 @@ echo "[1/4] 固件目录: $FIRMWARE_PATH"
 echo "[2/4] 删除 packages 目录..."
 find "$FIRMWARE_PATH" -type d -name "packages" -exec rm -rf {} + 2>/dev/null || true
 
-# 获取绝对路径
-FIRMWARE_DIR="$PWD/$FIRMWARE_PATH"
+# 获取绝对路径（使用 realpath 处理软链接）
+FIRMWARE_DIR=$(realpath "$FIRMWARE_PATH")
 
 # 列出所有固件文件
 echo "[3/4] 固件文件列表:"
