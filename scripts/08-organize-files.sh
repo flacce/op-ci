@@ -22,8 +22,19 @@ echo "========================================="
 echo "📦 整理固件文件..."
 echo "========================================="
 
-# 进入 OpenWrt 源码目录
-cd openwrt
+# 智能检测 OpenWrt 目录
+if [ -d "openwrt" ]; then
+    cd openwrt
+    echo "📂 进入 openwrt 目录"
+elif [ -f "feeds.conf.default" ]; then
+    echo "📂 当前已在 openwrt 目录"
+else
+    # 尝试在 build/openwrt 查找 (适配本地构建)
+    if [ -d "build/openwrt" ]; then
+        cd build/openwrt
+        echo "📂 进入 build/openwrt 目录"
+    fi
+fi
 
 # 找到固件输出目录（bin/targets/架构/型号）
 FIRMWARE_PATH=$(find bin/targets -type d -maxdepth 2 | grep -E "bin/targets/[^/]+/[^/]+$" | head -1)

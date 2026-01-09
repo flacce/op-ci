@@ -96,22 +96,35 @@ echo -e "${GREEN}[3/3] 修复 Makefile 问题...${NC}"
 SINGBOX_MAKEFILE="package/custom/sing-box/Makefile"
 if [ -f "$SINGBOX_MAKEFILE" ]; then
     echo "  🔧 修复 sing-box..."
-    # 移除 full/config 定义
+    
+    # 1. 移除 full 版本的所有定义
     sed -i '/^define Package\/sing-box$/,/^endef$/d' "$SINGBOX_MAKEFILE"
     sed -i '/^define Package\/sing-box\/description$/,/^endef$/d' "$SINGBOX_MAKEFILE"
     sed -i '/^define Package\/sing-box\/config$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    # 重命名 tiny -> sing-box
-    sed -i 's/Package\/sing-box-tiny/Package\/sing-box/g' "$SINGBOX_MAKEFILE"
-    sed -i 's/BuildPackage,sing-box-tiny/BuildPackage,sing-box/g' "$SINGBOX_MAKEFILE"
-    # 移除 CONFLICTS
-    sed -i 's/PROVIDES:=sing-box/# PROVIDES:=sing-box/' "$SINGBOX_MAKEFILE"
-    sed -i 's/CONFLICTS:=sing-box/# CONFLICTS:=sing-box/' "$SINGBOX_MAKEFILE"
-    # 移除重复 BuildPackage
-    sed -i '/$(eval $(call BuildPackage,sing-box-tiny))$/d' "$SINGBOX_MAKEFILE"
-    # 修复路径
+    sed -i '/^define Package\/sing-box\/conffiles$/,/^endef$/d' "$SINGBOX_MAKEFILE"
+    sed -i '/^define Build\/Compile\/sing-box$/,/^endef$/d' "$SINGBOX_MAKEFILE"
+    
+    # 2. 重命名 tiny 定义块（只在 define 行中替换）
+    sed -i 's/^define Package\/sing-box-tiny$/define Package\/sing-box/' "$SINGBOX_MAKEFILE"
+    sed -i 's/^define Package\/sing-box-tiny\/description$/define Package\/sing-box\/description/' "$SINGBOX_MAKEFILE"
+    sed -i 's/^define Package\/sing-box-tiny\/conffiles$/define Package\/sing-box\/conffiles/' "$SINGBOX_MAKEFILE"
+    sed -i 's/^define Build\/Compile\/sing-box-tiny$/define Build\/Compile\/sing-box/' "$SINGBOX_MAKEFILE"
+    sed -i 's/^define Package\/sing-box-tiny\/install$/define Package\/sing-box\/install/' "$SINGBOX_MAKEFILE"
+    
+    # 3. 移除 PROVIDES 和 CONFLICTS（避免 Kconfig 循环依赖）
+    sed -i '/^[[:space:]]*PROVIDES:=sing-box/d' "$SINGBOX_MAKEFILE"
+    sed -i '/^[[:space:]]*CONFLICTS:=sing-box/d' "$SINGBOX_MAKEFILE"
+    
+    # 4. 修复 BuildPackage 调用
+    sed -i 's/$(eval $(call BuildPackage,sing-box-tiny))/$(eval $(call BuildPackage,sing-box))/' "$SINGBOX_MAKEFILE"
+    
+    # 5. 移除可能的重复 BuildPackage 调用
+    # 保留第一个 sing-box，删除后续的
+    awk '!seen[/\$\(eval \$\(call BuildPackage,sing-box\)\)/]++' "$SINGBOX_MAKEFILE" > "$SINGBOX_MAKEFILE.tmp" && mv "$SINGBOX_MAKEFILE.tmp" "$SINGBOX_MAKEFILE"
+    
+    # 6. 修复 golang-package.mk 路径
     sed -i 's|include ../../lang/golang/golang-package.mk|include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk|' "$SINGBOX_MAKEFILE"
-    # 修复自引用描述
-    sed -i '/^Package\/sing-box\/description:=$(Package\/sing-box\/description)$/d' "$SINGBOX_MAKEFILE"
+    
 else
     echo "  ⚠️  sing-box Makefile 未找到"
 fi
