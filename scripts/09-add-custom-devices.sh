@@ -43,16 +43,20 @@ mkdir -p "$DTS_DIR"
 # 1. 下载 DTS 文件
 # ============================================================================
 
+# 依赖文件 (NSS 支持)
+echo -e "${GREEN}[1/3] 下载依赖文件 (ipq6018-nss.dtsi)...${NC}"
+wget -nv https://raw.githubusercontent.com/coolsnowwolf/lede/master/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6018-nss.dtsi -O "$DTS_DIR/ipq6018-nss.dtsi"
+
 # RE-CS-02 (雅典娜)
-echo -e "${GREEN}[1/2] 下载 RE-CS-02 (雅典娜) DTS...${NC}"
+echo -e "${GREEN}[2/3] 下载 RE-CS-02 (雅典娜) DTS...${NC}"
 wget -nv https://raw.githubusercontent.com/coolsnowwolf/lede/master/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6010-re-cs-02.dts -O "$DTS_DIR/ipq6010-re-cs-02.dts"
 
 # RE-SS-01 (亚瑟)
-echo -e "${GREEN}[1/2] 下载 RE-SS-01 (亚瑟) DTS...${NC}"
+echo -e "${GREEN}[3/3] 下载 RE-SS-01 (亚瑟) DTS...${NC}"
 wget -nv https://raw.githubusercontent.com/coolsnowwolf/lede/master/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/ipq6000-re-ss-01.dts -O "$DTS_DIR/ipq6000-re-ss-01.dts"
 
 # ============================================================================
-# 2. 修改 Makefile
+# 3. 修改 Makefile
 # ============================================================================
 echo -e "${GREEN}[2/2] 修改 ipq60xx.mk 添加设备定义...${NC}"
 
