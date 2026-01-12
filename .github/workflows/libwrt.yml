@@ -1,0 +1,145 @@
+#
+# ============================================================================
+# LiBwrt 固件自动构建 Workflow
+# ============================================================================
+# 目标设备: 京东云 亚瑟(RE-SS-01) 和 雅典娜(RE-CS-02)
+# 源码仓库: LiBwrt/openwrt-6.x (原生支持上述设备)
+# ============================================================================
+
+name: 🚀 构建 LiBwrt IPQ60xx 固件
+
+on:
+  workflow_dispatch:
+    inputs:
+      ssh:
+        description: 'SSH 远程调试'
+        type: boolean
+        required: false
+        default: false
+
+env:
+  REPO_URL: https://github.com/LiBwrt/openwrt-6.x
+  REPO_BRANCH: main-nss
+  FEEDS_CONF: feeds.conf.default
+  CONFIG_FILE: seed.config
+  TZ: Asia/Shanghai
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: 📥 检出仓库代码
+      uses: actions/checkout@v4
+
+    - name: 🔧 初始化编译环境
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        chmod +x scripts/*.sh
+        bash scripts/01-init-environment.sh
+
+    - name: 📦 克隆最新源码
+      working-directory: /workdir
+      run: |
+        # 使用 LiBwrt 源码
+        bash $GITHUB_WORKSPACE/scripts/02-clone-source.sh
+
+    - name: 💾 恢复缓存
+      uses: actions/cache@v4
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/openwrt/.ccache
+          /workdir/openwrt/staging_dir
+        key: libwrt-cache-${{ hashFiles('seed.config') }}-${{ github.run_number }}
+        restore-keys: |
+          libwrt-cache-${{ hashFiles('seed.config') }}-
+          libwrt-cache-
+
+    - name: 🔄 刷新缓存时间戳
+      working-directory: /workdir
+      run: |
+        if [ -d "openwrt/staging_dir" ]; then
+          find openwrt/staging_dir -type d -name "stamp" -not -path "*target*" | while read -r dir; do
+            find "$dir" -type f -exec touch {} +
+          done
+        fi
+
+    - name: 📦 准备软件包环境
+      run: |
+        # 注意：这里继续使用通用的准备脚本
+        # 如果 LiBwrt 自带了某些插件，脚本中的克隆可能会被跳过或覆盖，需注意检查
+        bash scripts/03-prepare-packages.sh
+
+    - name: 🧹 清理冲突插件
+      run: bash scripts/04-clean-conflicts.sh
+
+    - name: 📥 安装 Feeds
+      run: bash scripts/install-feeds.sh
+
+    - name: ⚙️ 加载配置文件
+      run: bash scripts/05-load-config.sh
+
+    - name: 📥 下载编译依赖
+      run: bash scripts/06-download-libs.sh
+
+    - name: 🔨 编译固件
+      id: compile
+      run: |
+        bash scripts/07-compile.sh
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name: 🔌 SSH 远程调试 (编译完成后)
+      if: github.event.inputs.ssh == true
+      uses: mxschmitt/action-tmate@v3
+      timeout-minutes: 60
+      with:
+        limit-access-to-actor: true
+
+    - name: 📦 整理固件文件
+      id: organize
+      if: steps.compile.outputs.status == 'success'
+      run: |
+        output=$(bash scripts/08-organize-files.sh)
+        echo "$output"
+        FIRMWARE_DIR=$(echo "$output" | grep "FIRMWARE_DIR=" | cut -d'=' -f2)
+        echo "FIRMWARE=$FIRMWARE_DIR" >> $GITHUB_ENV
+        BUILD_DATE=$(TZ=Asia/Shanghai date '+%Y-%m-%d')
+        echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_OUTPUT
+        echo "status=success" >> $GITHUB_OUTPUT
+
+    - name:  上传固件到 Artifacts
+      uses: actions/upload-artifact@v4
+      if: steps.organize.outputs.status == 'success'
+      with:
+        name: LiBwrt_固件_${{ steps.organize.outputs.BUILD_DATE }}
+        path: ${{ env.FIRMWARE }}
+
+    - name: 🚀 发布到 GitHub Releases
+      uses: softprops/action-gh-release@v1
+      if: steps.organize.outputs.status == 'success'
+      with:
+        tag_name: libwrt-${{ steps.organize.outputs.BUILD_DATE }}
+        name: LiBwrt IPQ60xx 固件 ${{ steps.organize.outputs.BUILD_DATE }}
+        body: |
+          ## 📦 LiBwrt 固件发布
+          
+          ### 🎯 目标设备
+          - 京东云 亚瑟（RE-SS-01）
+          - 京东云 雅典娜（RE-CS-02）
+          
+          ### ℹ️ 说明
+          - 源码来源: [LiBwrt/openwrt-6.x](https://github.com/LiBwrt/openwrt-6.x)
+          - 内核版本: 6.6
+          
+          ### 📊 构建信息
+          - 🕐 构建时间：${{ steps.organize.outputs.BUILD_DATE }}
+        files: ${{ env.FIRMWARE }}/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
