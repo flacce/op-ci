@@ -51,7 +51,7 @@ echo -e "${GREEN}[2/3] 克隆第三方插件...${NC}"
 mkdir -p package/custom
 
 # 清理旧目录
-for plugin in "luci-app-lucky" "homeproxy" "luci-app-easytier" "luci-theme-aurora" "sing-box" "luci-app-athena-led"; do
+for plugin in "luci-app-lucky" "homeproxy" "luci-app-easytier" "luci-theme-aurora" "sing-box"; do
     [ -d "package/custom/$plugin" ] && rm -rf "package/custom/$plugin"
 done
 
@@ -65,9 +65,6 @@ git clone --depth=1 https://github.com/VIKINGYFY/homeproxy.git package/custom/ho
 
 echo "  -> EasyTier (虚拟组网)..."
 git clone --depth=1 https://github.com/EasyTier/luci-app-easytier.git package/custom/luci-app-easytier
-
-echo "  -> Athena LED (雅典娜呼吸灯)..."
-git clone --depth=1 https://github.com/NemoAlex/luci-app-athena-led.git package/custom/luci-app-athena-led
 
 echo "  -> Aurora (现代化主题)..."
 git clone --depth=1 https://github.com/eamonxg/luci-theme-aurora.git package/custom/luci-theme-aurora
