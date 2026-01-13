@@ -108,23 +108,81 @@ echo -e "${GREEN}[2/3] 安装第三方插件...${NC}"
 # Lucky (综合工具箱)
 UPDATE_PACKAGE "luci-app-lucky" "gdy666/luci-app-lucky" "main" "name" "lucky"
 
-# 🔍 自动更新 Lucky 到最新版 (包含预览版)
-LUCKY_MAKEFILE="package/custom/luci-app-lucky/lucky/Makefile"
-if [ -f "$LUCKY_MAKEFILE" ]; then
-    echo "  ✨ Checking for latest Lucky version (including Pre-releases)..."
-    # 获取最新 Tag (去除 v 前缀)
-    LATEST_LUCKY=$(curl -s https://api.github.com/repos/gdy666/lucky/releases | grep "tag_name" | head -n 1 | cut -d '"' -f 4 | sed 's/^v//')
+# 🔍 自动更新 Lucky 到最新版 (使用 release.66666.host 源)
+LUCKY_PKG_DIR="package/custom/luci-app-lucky/lucky"
+if [ -d "$LUCKY_PKG_DIR" ]; then
+    echo "  ✨ 正在从 release.66666.host 检查 Lucky 最新版..."
     
-    if [ -n "$LATEST_LUCKY" ]; then
-        CURRENT_VER=$(grep "PKG_VERSION:=" "$LUCKY_MAKEFILE" | cut -d'=' -f2)
-        if [ "$LATEST_LUCKY" != "$CURRENT_VER" ]; then
-            echo "    -> Updating Lucky: $CURRENT_VER -> $LATEST_LUCKY"
-            sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=$LATEST_LUCKY/" "$LUCKY_MAKEFILE"
+    # 1. 获取最新版本目录 (例如 v2.26.0beta1)
+    BASE_URL="https://release.66666.host"
+    LATEST_VER_DIR=$(curl -s "$BASE_URL" | grep -o 'href="./v[^"]*"' | cut -d'"' -f2 | sed 's/\.\///;s/\///' | sort -V | tail -n 1)
+    
+    if [ -n "$LATEST_VER_DIR" ]; then
+        echo "    -> Found latest version: $LATEST_VER_DIR"
+        
+        # 2. 获取内部目录 (例如 2.26.0_lucky)
+        INNER_DIR=$(curl -s "$BASE_URL/$LATEST_VER_DIR/" | grep -o 'href="./[^"]*_lucky/"' | head -n 1 | cut -d'"' -f2 | sed 's/\.\///;s/\///')
+        
+        if [ -n "$INNER_DIR" ]; then
+            echo "    -> Found inner dir: $INNER_DIR"
+            
+            # 3. 提取纯版本号 (从 INNER_DIR 中，例如 2.26.0)
+            VER_NUM=$(echo "$INNER_DIR" | sed 's/_lucky//')
+            
+            # 4. 构建完整下载 URL
+            FILE_NAME="lucky_${VER_NUM}_Linux_arm64.tar.gz"
+            # 目标 Makefile 路径
+            TARGET_MAKEFILE="$LUCKY_PKG_DIR/Makefile"
+            
+            # 5. 重写 Makefile
+            cat <<EOF > "$TARGET_MAKEFILE"
+include \$(TOPDIR)/rules.mk
+
+PKG_NAME:=lucky
+PKG_VERSION:=$LATEST_VER_DIR
+PKG_RELEASE:=1
+
+PKG_SOURCE:=$FILE_NAME
+PKG_SOURCE_URL:=$BASE_URL/$LATEST_VER_DIR/$INNER_DIR/
+PKG_HASH:=skip
+
+include \$(INCLUDE_DIR)/package.mk
+
+define Package/lucky
+  SECTION:=net
+  CATEGORY:=Network
+  TITLE:=Lucky (Custom Host)
+  URL:=https://github.com/gdy666/lucky
+  DEPENDS:=@(aarch64)
+endef
+
+define Package/lucky/description
+  Lucky (Integrated from 66666.host - $LATEST_VER_DIR)
+endef
+
+define Build/Compile
+	# Binary download, no compile
+endef
+
+define Package/lucky/install
+	\$(INSTALL_DIR) \$(1)/usr/bin
+	\$(INSTALL_DIR) \$(1)/etc/init.d
+	\$(INSTALL_DIR) \$(1)/etc/config
+	
+	tar -xzvf \$(DL_DIR)/\$(PKG_SOURCE) -C \$(PKG_BUILD_DIR)/
+	\$(INSTALL_BIN) \$(PKG_BUILD_DIR)/lucky \$(1)/usr/bin/lucky
+	\$(INSTALL_BIN) ./files/lucky.init \$(1)/etc/init.d/lucky
+	\$(INSTALL_CONF) ./files/luckyuci \$(1)/etc/config/lucky
+endef
+
+\$(eval \$(call BuildPackage,lucky))
+EOF
+            echo "    ✅ Lucky Makefile updated to use custom host ($LATEST_VER_DIR)."
         else
-            echo "    -> Lucky is up-to-date ($CURRENT_VER)"
+            echo "    ⚠️ Failed to find inner lucky directory."
         fi
     else
-        echo "    ⚠️ Failed to check Lucky version, using default."
+        echo "    ⚠️ Failed to find latest version directory."
     fi
 fi
 
