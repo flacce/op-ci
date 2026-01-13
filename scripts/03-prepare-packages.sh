@@ -117,6 +117,10 @@ UPDATE_PACKAGE "luci-app-easytier" "EasyTier/luci-app-easytier" "main" "name" "e
 # Aurora Theme (主题)
 UPDATE_PACKAGE "luci-theme-aurora" "eamonxg/luci-theme-aurora" "master" "name"
 
+# Athena LED (雅典娜呼吸灯)
+UPDATE_PACKAGE "luci-app-athena-led" "NONGFAH/luci-app-athena-led" "master" "name"
+
+
 # sing-box (核心组件 - 使用特殊处理逻辑)
 echo -e "\n${GREEN}Processing: sing-box (Manual handling)${NC}"
 # 清理旧的 sing-box
