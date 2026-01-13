@@ -30,6 +30,8 @@ on:
         type: boolean
         required: false
         default: false
+  schedule:
+    - cron: '0 20 * * *'  # 北京时间凌晨4点 (UTC 20:00)
 
 # ============================================================================
 # 全局环境变量
@@ -396,3 +398,26 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### 📥 下载固件" >> $GITHUB_STEP_SUMMARY
         echo "在当前页面的 **Artifacts** 区域下载编译好的固件" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # 任务: 🧹 清理旧的构建记录
+  # ============================================================================
+  # 功能:
+  #   - 自动删除旧的 Workflow Runs，节省 GitHub Actions 存储空间
+  #   - 策略: 只保留最近 3 次构建
+  # ============================================================================
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    if: always() # 无论构建成功与否都运行
+    needs: build # 在构建任务之后运行
+    steps:
+      - name: Delete old workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 3
