@@ -187,37 +187,41 @@ SINGBOX_MAKEFILE="package/custom/sing-box/Makefile"
 if [ -f "$SINGBOX_MAKEFILE" ]; then
     echo "  🔧 修复 sing-box (去除 full 版本)..."
     
-    # 1. 修正 golang-package.mk 路径 (最关键)
+    # 1. 修正 golang-package.mk 路径
     sed -i 's|\.\./\.\./lang/golang/golang-package.mk|$(TOPDIR)/feeds/packages/lang/golang/golang-package.mk|' "$SINGBOX_MAKEFILE"
     
-    # 2. 移除 full 版本的定义块
-    # 删除 define Package/sing-box ... endef 块
-    sed -i '/^define Package\/sing-box$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    # 删除对应的 description, config, conffiles, install
-    sed -i '/^define Package\/sing-box\/description$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    sed -i '/^define Package\/sing-box\/config$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    sed -i '/^define Package\/sing-box\/conffiles$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    sed -i '/^define Package\/sing-box\/install$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    
-    # 3. 将 tiny 版本重命名为 sing-box (成为默认)
-    sed -i 's/Package\/sing-box-tiny/Package\/sing-box/g' "$SINGBOX_MAKEFILE"
-    sed -i 's/Build\/Compile\/sing-box-tiny/Build\/Compile\/sing-box/g' "$SINGBOX_MAKEFILE"
-    
-    # 4. 清理 tiny 特有的属性 (PROVIDES/CONFLICTS/VARIANT)
+    # 2. 删除原有的 full 版本定义 (sing-box)
+    # 使用 awk 来实现多行删除，比 sed 更可靠
+    # 删除 define Package/sing-box ... endef 及其所有子属性
+    awk '
+    BEGIN { skip=0 }
+    /^define Package\/sing-box$/ { skip=1 }
+    /^define Package\/sing-box\// { skip=1 }
+    /^define Build\/Compile\/sing-box$/ { skip=1 }
+    /^endef/ { if (skip) { skip=0; next } }
+    !skip { print }
+    ' "$SINGBOX_MAKEFILE" > "$SINGBOX_MAKEFILE.tmp" && mv "$SINGBOX_MAKEFILE.tmp" "$SINGBOX_MAKEFILE"
+
+    # 3. 删除 PROVIDES 和 CONFLICTS (解决循环依赖)
     sed -i '/PROVIDES:=sing-box/d' "$SINGBOX_MAKEFILE"
     sed -i '/CONFLICTS:=sing-box/d' "$SINGBOX_MAKEFILE"
-    sed -i '/VARIANT:=tiny/d' "$SINGBOX_MAKEFILE"
     
-    # 5. 修正最后的构建调用
-    # 此时文件中应该剩下 $(eval $(call BuildPackage,sing-box)) 和原本的 tiny 调用
-    # 我们需要确保只保留一个有效的 BuildPackage,sing-box
-    # 简单粗暴：删除所有 BuildPackage 调用，然后手动添加一个正确的
-    sed -i '/BuildPackage/d' "$SINGBOX_MAKEFILE"
+    # 4. 将 tiny 版本重命名为 sing-box
+    sed -i 's/Package\/sing-box-tiny/Package\/sing-box/g' "$SINGBOX_MAKEFILE"
+    sed -i 's/Build\/Compile\/sing-box-tiny/Build\/Compile\/sing-box/g' "$SINGBOX_MAKEFILE"
+    sed -i 's/VARIANT:=tiny/VARIANT:=tiny\n  PROVIDES:=sing-box/' "$SINGBOX_MAKEFILE"
+
+    # 5. 确保只构建改名后的包
+    # 删除旧的 eval 调用
+    sed -i '/\$(eval \$(call BuildPackage,sing-box))/d' "$SINGBOX_MAKEFILE"
+    sed -i '/\$(eval \$(call BuildPackage,sing-box-tiny))/d' "$SINGBOX_MAKEFILE"
+    # 添加新的 eval 调用
     echo '$(eval $(call BuildPackage,sing-box))' >> "$SINGBOX_MAKEFILE"
     
 else
     echo "  ⚠️  sing-box Makefile 未找到"
 fi
+
 
 
 # --- homeproxy 修复 ---
