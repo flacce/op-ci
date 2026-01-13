@@ -196,6 +196,13 @@ UPDATE_PACKAGE "luci-app-easytier" "EasyTier/luci-app-easytier" "main" "name" "e
 # Aurora Theme (主题)
 UPDATE_PACKAGE "luci-theme-aurora" "eamonxg/luci-theme-aurora" "master" "name"
 
+# MosDNS (DNS 转发器)
+# 1. 移除源码自带的 mosdns 和 v2ray-geodata (防止冲突)
+find package/ feeds/ -name "mosdns" -o -name "v2ray-geodata" -o -name "luci-app-mosdns" | xargs rm -rf
+# 2. 克隆 sbwml 的版本 (v5 分支)
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/custom/luci-app-mosdns
+git clone https://github.com/sbwml/v2ray-geodata package/custom/v2ray-geodata
+
 # Athena LED (雅典娜呼吸灯)
 UPDATE_PACKAGE "luci-app-athena-led" "haipengno1/luci-app-athena-led" "main" "name"
 
