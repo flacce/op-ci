@@ -16,6 +16,8 @@ on:
         type: boolean
         required: false
         default: false
+  schedule:
+    - cron: '0 20 * * *'  # 北京时间凌晨4点 (UTC 20:00)
 
 env:
   REPO_URL: https://github.com/LiBwrt/openwrt-6.x
@@ -143,3 +145,20 @@ jobs:
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    if: always()
+    needs: build
+    steps:
+      - name: Delete old workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 3
+
