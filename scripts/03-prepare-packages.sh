@@ -141,8 +141,8 @@ fi
 
 
 
-# sing-box (核心组件 - 使用特殊处理逻辑)
-echo -e "\n${GREEN}Processing: sing-box (Manual handling)${NC}"
+# sing-box (核心组件 - 使用原版修改策略)
+echo -e "\n${GREEN}Processing: sing-box (Patching upstream)${NC}"
 # 清理旧的 sing-box
 rm -rf package/custom/sing-box
 mkdir -p package/custom/sing-box
@@ -156,76 +156,48 @@ mv net/sing-box/* .
 rm -rf net .git
 popd > /dev/null
 
-
 # ============================================================================
 # [3] 修复 Makefile
 # ============================================================================
 echo -e "${GREEN}[3/3] 修复 Makefile 问题...${NC}"
 
-# --- sing-box 修复 (保持原有的有效修复逻辑) ---
+# --- sing-box 修复 (改用 sed 精准裁剪) ---
 SINGBOX_MAKEFILE="package/custom/sing-box/Makefile"
 if [ -f "$SINGBOX_MAKEFILE" ]; then
-    echo "  🔧 修复 sing-box..."
-    cp "$SINGBOX_MAKEFILE" "$SINGBOX_MAKEFILE.bak"
+    echo "  🔧 修复 sing-box (去除 full 版本)..."
     
-    # 写入头部
-    cat <<EOF > "$SINGBOX_MAKEFILE"
-include \$(TOPDIR)/rules.mk
-
-EOF
-    # 提取变量
-    grep -E "^(PKG_|GO_)" "$SINGBOX_MAKEFILE.bak" | grep -v "GO_PKG_TAGS" >> "$SINGBOX_MAKEFILE"
+    # 1. 修正 golang-package.mk 路径 (最关键)
+    sed -i 's|\.\./\.\./lang/golang/golang-package.mk|$(TOPDIR)/feeds/packages/lang/golang/golang-package.mk|' "$SINGBOX_MAKEFILE"
     
-    # 写入主体
-    cat <<EOF >> "$SINGBOX_MAKEFILE"
-
-include \$(INCLUDE_DIR)/package.mk
-include \$(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
-
-define Package/sing-box
-  TITLE:=The universal proxy platform
-  SECTION:=net
-  CATEGORY:=Network
-  URL:=https://sing-box.sagernet.org
-  DEPENDS:=\$(GO_ARCH_DEPENDS) +ca-bundle +kmod-inet-diag +kmod-tun
-  USERID:=sing-box=5566:sing-box=5566
-  TITLE+= (tiny)
-  VARIANT:=tiny
-endef
-
-define Package/sing-box/description
-  Sing-box is a universal proxy platform which supports hysteria, SOCKS, Shadowsocks,
-  ShadowTLS, Tor, trojan, VLess, VMess, WireGuard and so on.
-endef
-
-define Package/sing-box/conffiles
-/etc/config/sing-box
-/etc/sing-box/
-endef
-
-define Package/sing-box/install
-	\$(INSTALL_DIR) \$(1)/usr/bin/
-	\$(INSTALL_BIN) \$(GO_PKG_BUILD_BIN_DIR)/sing-box \$(1)/usr/bin/sing-box
-
-	\$(INSTALL_DIR) \$(1)/etc/sing-box
-	\$(INSTALL_DATA) \$(PKG_BUILD_DIR)/release/config/config.json \$(1)/etc/sing-box
-
-	\$(INSTALL_DIR) \$(1)/etc/config/
-	\$(INSTALL_CONF) ./files/sing-box.conf \$(1)/etc/config/sing-box
-	\$(INSTALL_DIR) \$(1)/etc/init.d/
-	\$(INSTALL_BIN) ./files/sing-box.init \$(1)/etc/init.d/sing-box
-endef
-
-GO_PKG_TAGS:=with_quic,with_utls,with_clash_api
-ifndef CONFIG_SMALL_FLASH
-  GO_PKG_TAGS:=with_gvisor,\$(GO_PKG_TAGS)
-endif
-
-\$(eval \$(call BuildPackage,sing-box))
-EOF
+    # 2. 移除 full 版本的定义块
+    # 删除 define Package/sing-box ... endef 块
+    sed -i '/^define Package\/sing-box$/,/^endef$/d' "$SINGBOX_MAKEFILE"
+    # 删除对应的 description, config, conffiles, install
+    sed -i '/^define Package\/sing-box\/description$/,/^endef$/d' "$SINGBOX_MAKEFILE"
+    sed -i '/^define Package\/sing-box\/config$/,/^endef$/d' "$SINGBOX_MAKEFILE"
+    sed -i '/^define Package\/sing-box\/conffiles$/,/^endef$/d' "$SINGBOX_MAKEFILE"
+    sed -i '/^define Package\/sing-box\/install$/,/^endef$/d' "$SINGBOX_MAKEFILE"
+    
+    # 3. 将 tiny 版本重命名为 sing-box (成为默认)
+    sed -i 's/Package\/sing-box-tiny/Package\/sing-box/g' "$SINGBOX_MAKEFILE"
+    sed -i 's/Build\/Compile\/sing-box-tiny/Build\/Compile\/sing-box/g' "$SINGBOX_MAKEFILE"
+    
+    # 4. 清理 tiny 特有的属性 (PROVIDES/CONFLICTS/VARIANT)
+    sed -i '/PROVIDES:=sing-box/d' "$SINGBOX_MAKEFILE"
+    sed -i '/CONFLICTS:=sing-box/d' "$SINGBOX_MAKEFILE"
+    sed -i '/VARIANT:=tiny/d' "$SINGBOX_MAKEFILE"
+    
+    # 5. 修正最后的构建调用
+    # 此时文件中应该剩下 $(eval $(call BuildPackage,sing-box)) 和原本的 tiny 调用
+    # 我们需要确保只保留一个有效的 BuildPackage,sing-box
+    # 简单粗暴：删除所有 BuildPackage 调用，然后手动添加一个正确的
+    sed -i '/BuildPackage/d' "$SINGBOX_MAKEFILE"
+    echo '$(eval $(call BuildPackage,sing-box))' >> "$SINGBOX_MAKEFILE"
+    
 else
     echo "  ⚠️  sing-box Makefile 未找到"
 fi
+
 
 # --- homeproxy 修复 ---
 HOMEPROXY_MAKEFILE="package/custom/homeproxy/Makefile"
