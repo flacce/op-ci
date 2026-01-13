@@ -108,6 +108,27 @@ echo -e "${GREEN}[2/3] 安装第三方插件...${NC}"
 # Lucky (综合工具箱)
 UPDATE_PACKAGE "luci-app-lucky" "gdy666/luci-app-lucky" "main" "name" "lucky"
 
+# 🔍 自动更新 Lucky 到最新版 (包含预览版)
+LUCKY_MAKEFILE="package/custom/luci-app-lucky/lucky/Makefile"
+if [ -f "$LUCKY_MAKEFILE" ]; then
+    echo "  ✨ Checking for latest Lucky version (including Pre-releases)..."
+    # 获取最新 Tag (去除 v 前缀)
+    LATEST_LUCKY=$(curl -s https://api.github.com/repos/gdy666/lucky/releases | grep "tag_name" | head -n 1 | cut -d '"' -f 4 | sed 's/^v//')
+    
+    if [ -n "$LATEST_LUCKY" ]; then
+        CURRENT_VER=$(grep "PKG_VERSION:=" "$LUCKY_MAKEFILE" | cut -d'=' -f2)
+        if [ "$LATEST_LUCKY" != "$CURRENT_VER" ]; then
+            echo "    -> Updating Lucky: $CURRENT_VER -> $LATEST_LUCKY"
+            sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=$LATEST_LUCKY/" "$LUCKY_MAKEFILE"
+        else
+            echo "    -> Lucky is up-to-date ($CURRENT_VER)"
+        fi
+    else
+        echo "    ⚠️ Failed to check Lucky version, using default."
+    fi
+fi
+
+
 # HomeProxy (代理管理)
 UPDATE_PACKAGE "homeproxy" "VIKINGYFY/homeproxy" "main" "name"
 
