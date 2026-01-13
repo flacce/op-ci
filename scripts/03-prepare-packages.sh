@@ -51,7 +51,7 @@ echo -e "${GREEN}[2/3] 克隆第三方插件...${NC}"
 mkdir -p package/custom
 
 # 清理旧目录
-for plugin in "luci-app-lucky" "homeproxy" "luci-app-adguardhome" "luci-app-easytier" "luci-theme-aurora" "sing-box"; do
+for plugin in "luci-app-lucky" "homeproxy" "luci-app-easytier" "luci-theme-aurora" "sing-box" "luci-app-athena-led"; do
     [ -d "package/custom/$plugin" ] && rm -rf "package/custom/$plugin"
 done
 
@@ -62,11 +62,12 @@ git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/custom/
 echo "  -> HomeProxy (代理管理)..."
 git clone --depth=1 https://github.com/VIKINGYFY/homeproxy.git package/custom/homeproxy
 
-echo "  -> AdGuardHome (广告拦截)..."
-git clone --depth=1 https://github.com/rufengsuixing/luci-app-adguardhome.git package/custom/luci-app-adguardhome
 
 echo "  -> EasyTier (虚拟组网)..."
 git clone --depth=1 https://github.com/EasyTier/luci-app-easytier.git package/custom/luci-app-easytier
+
+echo "  -> Athena LED (雅典娜呼吸灯)..."
+git clone --depth=1 https://github.com/NemoAlex/luci-app-athena-led.git package/custom/luci-app-athena-led
 
 echo "  -> Aurora (现代化主题)..."
 git clone --depth=1 https://github.com/eamonxg/luci-theme-aurora.git package/custom/luci-theme-aurora
@@ -97,33 +98,67 @@ SINGBOX_MAKEFILE="package/custom/sing-box/Makefile"
 if [ -f "$SINGBOX_MAKEFILE" ]; then
     echo "  🔧 修复 sing-box..."
     
-    # 1. 移除 full 版本的所有定义
-    sed -i '/^define Package\/sing-box$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    sed -i '/^define Package\/sing-box\/description$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    sed -i '/^define Package\/sing-box\/config$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    sed -i '/^define Package\/sing-box\/conffiles$/,/^endef$/d' "$SINGBOX_MAKEFILE"
-    sed -i '/^define Build\/Compile\/sing-box$/,/^endef$/d' "$SINGBOX_MAKEFILE"
+    # 备份原文件
+    cp "$SINGBOX_MAKEFILE" "$SINGBOX_MAKEFILE.bak"
     
-    # 2. 重命名 tiny 定义块（只在 define 行中替换）
-    sed -i 's/^define Package\/sing-box-tiny$/define Package\/sing-box/' "$SINGBOX_MAKEFILE"
-    sed -i 's/^define Package\/sing-box-tiny\/description$/define Package\/sing-box\/description/' "$SINGBOX_MAKEFILE"
-    sed -i 's/^define Package\/sing-box-tiny\/conffiles$/define Package\/sing-box\/conffiles/' "$SINGBOX_MAKEFILE"
-    sed -i 's/^define Build\/Compile\/sing-box-tiny$/define Build\/Compile\/sing-box/' "$SINGBOX_MAKEFILE"
-    sed -i 's/^define Package\/sing-box-tiny\/install$/define Package\/sing-box\/install/' "$SINGBOX_MAKEFILE"
+    # 重写 Makefile
+    echo "  🔄 重写 Makefile 以适配..."
     
-    # 3. 移除 PROVIDES 和 CONFLICTS（避免 Kconfig 循环依赖）
-    sed -i '/^[[:space:]]*PROVIDES:=sing-box/d' "$SINGBOX_MAKEFILE"
-    sed -i '/^[[:space:]]*CONFLICTS:=sing-box/d' "$SINGBOX_MAKEFILE"
+    # 1. 写入头部
+    cat <<EOF > "$SINGBOX_MAKEFILE"
+include \$(TOPDIR)/rules.mk
+
+EOF
+    # 2. 提取变量定义 (PKG_*, GO_*)
+    grep -E "^(PKG_|GO_)" "$SINGBOX_MAKEFILE.bak" | grep -v "GO_PKG_TAGS" >> "$SINGBOX_MAKEFILE"
     
-    # 4. 修复 BuildPackage 调用
-    sed -i 's/$(eval $(call BuildPackage,sing-box-tiny))/$(eval $(call BuildPackage,sing-box))/' "$SINGBOX_MAKEFILE"
-    
-    # 5. 移除可能的重复 BuildPackage 调用
-    # 保留第一个 sing-box，删除后续的
-    awk '!seen[/\$\(eval \$\(call BuildPackage,sing-box\)\)/]++' "$SINGBOX_MAKEFILE" > "$SINGBOX_MAKEFILE.tmp" && mv "$SINGBOX_MAKEFILE.tmp" "$SINGBOX_MAKEFILE"
-    
-    # 6. 修复 golang-package.mk 路径
-    sed -i 's|include ../../lang/golang/golang-package.mk|include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk|' "$SINGBOX_MAKEFILE"
+    # 3. 写入主体
+    cat <<EOF >> "$SINGBOX_MAKEFILE"
+
+include \$(INCLUDE_DIR)/package.mk
+include \$(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+
+define Package/sing-box
+  TITLE:=The universal proxy platform
+  SECTION:=net
+  CATEGORY:=Network
+  URL:=https://sing-box.sagernet.org
+  DEPENDS:=\$(GO_ARCH_DEPENDS) +ca-bundle +kmod-inet-diag +kmod-tun
+  USERID:=sing-box=5566:sing-box=5566
+  TITLE+= (tiny)
+  VARIANT:=tiny
+endef
+
+define Package/sing-box/description
+  Sing-box is a universal proxy platform which supports hysteria, SOCKS, Shadowsocks,
+  ShadowTLS, Tor, trojan, VLess, VMess, WireGuard and so on.
+endef
+
+define Package/sing-box/conffiles
+/etc/config/sing-box
+/etc/sing-box/
+endef
+
+define Package/sing-box/install
+	\$(INSTALL_DIR) \$(1)/usr/bin/
+	\$(INSTALL_BIN) \$(GO_PKG_BUILD_BIN_DIR)/sing-box \$(1)/usr/bin/sing-box
+
+	\$(INSTALL_DIR) \$(1)/etc/sing-box
+	\$(INSTALL_DATA) \$(PKG_BUILD_DIR)/release/config/config.json \$(1)/etc/sing-box
+
+	\$(INSTALL_DIR) \$(1)/etc/config/
+	\$(INSTALL_CONF) ./files/sing-box.conf \$(1)/etc/config/sing-box
+	\$(INSTALL_DIR) \$(1)/etc/init.d/
+	\$(INSTALL_BIN) ./files/sing-box.init \$(1)/etc/init.d/sing-box
+endef
+
+GO_PKG_TAGS:=with_quic,with_utls,with_clash_api
+ifndef CONFIG_SMALL_FLASH
+  GO_PKG_TAGS:=with_gvisor,\$(GO_PKG_TAGS)
+endif
+
+\$(eval \$(call BuildPackage,sing-box))
+EOF
     
 else
     echo "  ⚠️  sing-box Makefile 未找到"
