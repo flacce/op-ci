@@ -162,65 +162,31 @@ fi
 
 
 
-# sing-box (核心组件 - 使用原版修改策略)
-echo -e "\n${GREEN}Processing: sing-box (Patching upstream)${NC}"
-# 清理旧的 sing-box
-rm -rf package/custom/sing-box
-mkdir -p package/custom/sing-box
-pushd package/custom/sing-box > /dev/null
-git init
-git remote add origin https://github.com/openwrt/packages.git
-git config core.sparseCheckout true
-echo "net/sing-box/*" >> .git/info/sparse-checkout
-git pull --depth=1 origin master
-mv net/sing-box/* .
-rm -rf net .git
-popd > /dev/null
+# sing-box (核心组件 - 使用预编译包模式)
+echo -e "\n${GREEN}Processing: sing-box (Pre-compiled Binary Mode)${NC}"
+# 注意: package/custom/sing-box 已在本地创建，无需 git clone
+# 这里我们只需要确保 Makefile 中的版本是最新的
 
-# ============================================================================
-# [3] 修复 Makefile
-# ============================================================================
-echo -e "${GREEN}[3/3] 修复 Makefile 问题...${NC}"
-
-# --- sing-box 修复 (改用 sed 精准裁剪) ---
 SINGBOX_MAKEFILE="package/custom/sing-box/Makefile"
 if [ -f "$SINGBOX_MAKEFILE" ]; then
-    echo "  🔧 修复 sing-box (去除 full 版本)..."
+    echo "  ✨ Checking for latest sing-box version (Pre-release)..."
+    # 获取最新的包含 "linux-arm64" 的 release tag
+    # 注意: sing-box release tag 通常是 v1.13.0-beta.5 格式
+    LATEST_SINGBOX=$(curl -s https://api.github.com/repos/SagerNet/sing-box/releases | grep "tag_name" | grep -v "rc" | head -n 1 | cut -d '"' -f 4 | sed 's/^v//')
     
-    # 1. 修正 golang-package.mk 路径
-    sed -i 's|\.\./\.\./lang/golang/golang-package.mk|$(TOPDIR)/feeds/packages/lang/golang/golang-package.mk|' "$SINGBOX_MAKEFILE"
-    
-    # 2. 删除原有的 full 版本定义 (sing-box)
-    # 使用 awk 来实现多行删除，比 sed 更可靠
-    # 删除 define Package/sing-box ... endef 及其所有子属性
-    awk '
-    BEGIN { skip=0 }
-    /^define Package\/sing-box$/ { skip=1 }
-    /^define Package\/sing-box\// { skip=1 }
-    /^define Build\/Compile\/sing-box$/ { skip=1 }
-    /^endef/ { if (skip) { skip=0; next } }
-    !skip { print }
-    ' "$SINGBOX_MAKEFILE" > "$SINGBOX_MAKEFILE.tmp" && mv "$SINGBOX_MAKEFILE.tmp" "$SINGBOX_MAKEFILE"
-
-    # 3. 删除 PROVIDES 和 CONFLICTS (解决循环依赖)
-    sed -i '/PROVIDES:=sing-box/d' "$SINGBOX_MAKEFILE"
-    sed -i '/CONFLICTS:=sing-box/d' "$SINGBOX_MAKEFILE"
-    
-    # 4. 将 tiny 版本重命名为 sing-box
-    sed -i 's/Package\/sing-box-tiny/Package\/sing-box/g' "$SINGBOX_MAKEFILE"
-    sed -i 's/Build\/Compile\/sing-box-tiny/Build\/Compile\/sing-box/g' "$SINGBOX_MAKEFILE"
-    sed -i 's/VARIANT:=tiny/VARIANT:=tiny\n  PROVIDES:=sing-box/' "$SINGBOX_MAKEFILE"
-
-    # 5. 确保只构建改名后的包
-    # 删除旧的 eval 调用
-    sed -i '/\$(eval \$(call BuildPackage,sing-box))/d' "$SINGBOX_MAKEFILE"
-    sed -i '/\$(eval \$(call BuildPackage,sing-box-tiny))/d' "$SINGBOX_MAKEFILE"
-    # 添加新的 eval 调用
-    echo '$(eval $(call BuildPackage,sing-box))' >> "$SINGBOX_MAKEFILE"
-    
-else
-    echo "  ⚠️  sing-box Makefile 未找到"
+    if [ -n "$LATEST_SINGBOX" ]; then
+        CURRENT_VER=$(grep "PKG_VERSION:=" "$SINGBOX_MAKEFILE" | cut -d'=' -f2)
+        if [ "$LATEST_SINGBOX" != "$CURRENT_VER" ]; then
+            echo "    -> Updating sing-box: $CURRENT_VER -> $LATEST_SINGBOX"
+            sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=$LATEST_SINGBOX/" "$SINGBOX_MAKEFILE"
+        else
+            echo "    -> sing-box is up-to-date ($CURRENT_VER)"
+        fi
+    else
+        echo "    ⚠️ Failed to check sing-box version, using default."
+    fi
 fi
+
 
 
 
