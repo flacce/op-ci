@@ -268,7 +268,7 @@ jobs:
     # 超时: 60 分钟
     # ------------------------------------------------------------------------
     - name: 🔌 SSH 远程调试 (编译完成后)
-      if: github.event.inputs.ssh == true
+      if: github.event.inputs.ssh == 'true'
       uses: mxschmitt/action-tmate@v3
       timeout-minutes: 60
       with:
