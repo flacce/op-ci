@@ -118,29 +118,26 @@ UPDATE_PACKAGE "luci-app-easytier" "EasyTier/luci-app-easytier" "main" "name" "e
 UPDATE_PACKAGE "luci-theme-aurora" "eamonxg/luci-theme-aurora" "master" "name"
 
 # Athena LED (雅典娜呼吸灯)
-UPDATE_PACKAGE "luci-app-athena-led" "NONGFAH/luci-app-athena-led" "main" "name"
+UPDATE_PACKAGE "luci-app-athena-led" "haipengno1/luci-app-athena-led" "main" "name"
 
 # 🔧 优化 Athena LED 插件
 ATHENA_DIR="package/custom/luci-app-athena-led"
 if [ -d "$ATHENA_DIR" ]; then
     echo "  ✨ 优化 Athena LED 插件..."
     
-    # 1. 修复 settings.lua 变量名复制错误 (seconds -> lightLevel)
-    sed -i 's/seconds = s:option(ListValue, "lightLevel"/lightLevel = s:option(ListValue, "lightLevel"/' "$ATHENA_DIR/luasrc/model/cbi/athena_led/settings.lua"
-    
-    # 2. 优化应用设置后的重启逻辑 (reload -> restart, exec -> sys.call)
+    # 1. 优化应用设置后的重启逻辑 (reload -> restart, exec -> sys.call)
     # 原代码使用 reload 可能导致配置不生效，且 logging 方式冗余
     sed -i 's/local output = luci.util.exec("\/etc\/init.d\/athena_led reload.*")/luci.sys.call("\/etc\/init.d\/athena_led restart >\/dev\/null 2>\&1")/' "$ATHENA_DIR/luasrc/model/cbi/athena_led/settings.lua"
     sed -i '/luci.util.exec("logger/d' "$ATHENA_DIR/luasrc/model/cbi/athena_led/settings.lua"
     
-    # 3. 移除 init.d 中冗余的 reload_service (Procd 会自动处理)
+    # 2. 移除 init.d 中冗余的 reload_service (Procd 会自动处理)
     # 删除 reload_service(){ stop; start; } 块
     sed -i '/reload_service()/,/^}/d' "$ATHENA_DIR/root/etc/init.d/athena_led"
     
-    # 4. 确保二进制和脚本有执行权限
+    # 3. 确保脚本有执行权限 (二进制由 Makefile 负责下载和安装)
     chmod +x "$ATHENA_DIR/root/etc/init.d/athena_led"
-    chmod +x "$ATHENA_DIR/root/usr/sbin/athena-led"
 fi
+
 
 
 
