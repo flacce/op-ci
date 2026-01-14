@@ -29,7 +29,7 @@ echo ""
 
 # 设置环境变量（LiBwrt）
 export REPO_URL="https://github.com/LiBwrt/openwrt-6.x"
-export REPO_BRANCH="kernel-6.12"
+export REPO_BRANCH="main-nss"
 export CONFIG_FILE="seed.config"
 export TZ="Asia/Shanghai"
 
