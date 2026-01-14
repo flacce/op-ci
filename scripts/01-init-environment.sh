@@ -49,6 +49,10 @@ df -h
 echo "[2/4] 使用官方脚本安装编译依赖..."
 sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
 
+# 补充安装 jq (解决 luci-app-advanced-reboot 等插件的构建依赖警告)
+echo "[2.5/4] 补充安装 jq 工具..."
+sudo apt-get update && sudo apt-get install -y jq
+
 
 # 设置系统时区
 echo "[3/4] 设置时区为 Asia/Shanghai..."
