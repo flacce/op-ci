@@ -135,11 +135,14 @@ if [ -d "$LUCKY_PKG_DIR" ]; then
             TARGET_MAKEFILE="$LUCKY_PKG_DIR/Makefile"
             
             # 5. 重写 Makefile
+            # 关键修复: PKG_VERSION 必须符合 OpenWrt 规范 (去除 'v'，不能有非法字符)
+            SAFE_VERSION=$(echo "$LATEST_VER_DIR" | sed 's/^v//')
+            
             cat <<EOF > "$TARGET_MAKEFILE"
 include \$(TOPDIR)/rules.mk
 
 PKG_NAME:=lucky
-PKG_VERSION:=$LATEST_VER_DIR
+PKG_VERSION:=$SAFE_VERSION
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$FILE_NAME
