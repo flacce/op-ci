@@ -214,6 +214,7 @@ find package/ feeds/ -name "mosdns" -o -name "v2ray-geodata" -o -name "luci-app-
 
 # 2. 从 sbwml 仓库提取界面部分 (luci-app-mosdns)
 echo "  ⚡ Setting up MosDNS..."
+rm -rf _tmp_mosdns_repo
 git clone https://github.com/sbwml/luci-app-mosdns -b v5 _tmp_mosdns_repo
 
 # 提取界面
