@@ -82,6 +82,11 @@ echo ""
 echo "📦 步骤 3: 准备软件包环境 (Feeds & Custom Plugins)"
 bash "$REPO_DIR/scripts/03-prepare-packages.sh"
 
+# 步骤 3.5: 添加自定义设备支持
+echo ""
+echo "🔧 步骤 3.5: 添加自定义设备支持 (RE-CS-02/RE-SS-01)"
+bash "$REPO_DIR/scripts/09-add-custom-devices.sh"
+
 # 步骤 5: 清理冲突
 echo ""
 echo "🧹 步骤 5: 清理冲突插件"
