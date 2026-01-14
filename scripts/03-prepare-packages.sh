@@ -163,8 +163,26 @@ define Package/lucky/description
   Lucky (Integrated from 66666.host - $LATEST_VER_DIR)
 endef
 
+define Build/Prepare
+	# 手动解压到构建目录
+	mkdir -p \$(PKG_BUILD_DIR)
+	unzip -o \$(DL_DIR)/\$(PKG_SOURCE) -d \$(PKG_BUILD_DIR)
+	# 赋予执行权限
+	chmod +x \$(PKG_BUILD_DIR)/mosdns
+endef
+
 define Build/Compile
 	# Binary download, no compile
+endef
+
+define Package/mosdns/install
+	\$(INSTALL_DIR) \$(1)/usr/bin
+	\$(INSTALL_DIR) \$(1)/etc/mosdns
+	\$(INSTALL_DIR) \$(1)/etc/init.d
+	
+	# 从构建目录复制
+	\$(INSTALL_BIN) \$(PKG_BUILD_DIR)/mosdns \$(1)/usr/bin/mosdns
+	\$(INSTALL_BIN) ./files/mosdns.init \$(1)/etc/init.d/mosdns
 endef
 
 define Package/lucky/install

@@ -22,6 +22,14 @@ define Package/mosdns/description
   MosDNS is a DNS proxy server. (Pre-compiled binary from GitHub Releases)
 endef
 
+define Build/Prepare
+	# 手动解压到构建目录
+	mkdir -p $(PKG_BUILD_DIR)
+	unzip -o $(DL_DIR)/$(PKG_SOURCE) -d $(PKG_BUILD_DIR)
+	# 赋予执行权限
+	chmod +x $(PKG_BUILD_DIR)/mosdns
+endef
+
 define Build/Compile
 	# Binary download, no compile
 endef
@@ -31,12 +39,8 @@ define Package/mosdns/install
 	$(INSTALL_DIR) $(1)/etc/mosdns
 	$(INSTALL_DIR) $(1)/etc/init.d
 	
-	unzip -o $(DL_DIR)/$(PKG_SOURCE) -d $(PKG_BUILD_DIR)
+	# 从构建目录复制
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mosdns $(1)/usr/bin/mosdns
-	
-	# 如果有默认配置和启动脚本，从 files 目录安装
-	# 注意：sbwml 的 luci-app-mosdns 通常自带了 init 脚本，这里我们可能只需要提供二进制
-	# 但为了保险，我们提供一个基础的 init 脚本，如果 luci-app 覆盖了它也没关系
 	$(INSTALL_BIN) ./files/mosdns.init $(1)/etc/init.d/mosdns
 endef
 
