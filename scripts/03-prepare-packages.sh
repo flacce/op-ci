@@ -217,6 +217,8 @@ echo "  ⚡ Setting up MosDNS..."
 git clone https://github.com/sbwml/luci-app-mosdns -b v5 _tmp_mosdns_repo
 # 提取界面
 cp -r _tmp_mosdns_repo/luci-app-mosdns package/custom/luci-app-mosdns
+# 提取 v2dat (luci-app-mosdns 依赖它)
+cp -r _tmp_mosdns_repo/v2dat package/custom/v2dat
 # 提取 v2ray-geodata (如果仓库里有，或者单独克隆)
 # sbwml v5 分支里似乎有 v2dat，但 v2ray-geodata 是独立仓库
 rm -rf _tmp_mosdns_repo
