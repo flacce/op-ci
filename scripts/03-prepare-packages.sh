@@ -217,14 +217,58 @@ echo "  ⚡ Setting up MosDNS..."
 git clone https://github.com/sbwml/luci-app-mosdns -b v5 _tmp_mosdns_repo
 # 提取界面
 cp -r _tmp_mosdns_repo/luci-app-mosdns package/custom/luci-app-mosdns
-# 提取 v2dat (luci-app-mosdns 依赖它)
-cp -r _tmp_mosdns_repo/v2dat package/custom/v2dat
-# 提取 v2ray-geodata (如果仓库里有，或者单独克隆)
-# sbwml v5 分支里似乎有 v2dat，但 v2ray-geodata 是独立仓库
+# 清理临时目录
 rm -rf _tmp_mosdns_repo
 
 # 3. 单独克隆 v2ray-geodata
 git clone https://github.com/sbwml/v2ray-geodata package/custom/v2ray-geodata
+
+# 3.5. ⚡ v2dat 预编译 (利用 Host Go 环境)
+# v2dat 依赖新版 Go (cobra)，OpenWrt 内置 Go 版本可能过低，因此在 Host 环境预先编译
+echo "  ⚡ Compiling v2dat on Host..."
+git clone https://github.com/sbwml/v2dat _v2dat_source
+pushd _v2dat_source > /dev/null
+# 交叉编译
+GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o ../v2dat_bin .
+popd > /dev/null
+rm -rf _v2dat_source
+
+# 创建 v2dat 插件包
+mkdir -p package/custom/v2dat
+mv v2dat_bin package/custom/v2dat/v2dat
+
+# 写入 v2dat Makefile
+cat <<EOF > package/custom/v2dat/Makefile
+include \$(TOPDIR)/rules.mk
+
+PKG_NAME:=v2dat
+PKG_VERSION:=2024
+PKG_RELEASE:=1
+
+include \$(INCLUDE_DIR)/package.mk
+
+define Package/v2dat
+  SECTION:=utils
+  CATEGORY:=Utilities
+  TITLE:=v2dat (Host Compiled)
+  DEPENDS:=@(aarch64)
+endef
+
+define Package/v2dat/description
+  v2dat tool compiled on host environment.
+endef
+
+define Build/Compile
+	# Already compiled
+endef
+
+define Package/v2dat/install
+	\$(INSTALL_DIR) \$(1)/usr/bin
+	\$(INSTALL_BIN) ./v2dat \$(1)/usr/bin/v2dat
+endef
+
+\$(eval \$(call BuildPackage,v2dat))
+EOF
 
 # 4. 创建 MosDNS 核心包 (预编译模式)
 # 这一步完全独立于 sbwml 的源码，确保使用的是我们自定义的 Makefile
