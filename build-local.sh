@@ -44,6 +44,27 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh | sudo bash
 fi
 
+# 步骤 1.5: 检查并配置 Go 环境 (用于编译 v2dat)
+# ------------------------------------------------------------------------
+echo ""
+echo "🔧 步骤 1.5: 配置 Go 编译环境 (v2dat 需要)"
+if ! command -v go &> /dev/null; then
+    echo "  ⚠️  未检测到 Go，正在自动下载 Go 1.22..."
+    mkdir -p "$WORK_DIR/go_toolchain"
+    # 下载 Go (中国大陆使用镜像，或者官方源)
+    # 既然是 build-local，假设用户网络通畅或能访问 GitHub
+    curl -L "https://go.dev/dl/go1.22.5.linux-amd64.tar.gz" -o "$WORK_DIR/go.tar.gz"
+    tar -xzf "$WORK_DIR/go.tar.gz" -C "$WORK_DIR/go_toolchain"
+    export PATH="$WORK_DIR/go_toolchain/go/bin:$PATH"
+    export GOROOT="$WORK_DIR/go_toolchain/go"
+    rm "$WORK_DIR/go.tar.gz"
+    echo "  ✅ Go 环境配置完成: $(go version)"
+else
+    echo "  ✅ 检测到 Go 环境: $(go version)"
+fi
+# 设置 Go 代理 (防止本地网络拉取失败)
+export GOPROXY=https://goproxy.io,direct
+
 # 步骤 2: 克隆源码
 cd "$WORK_DIR"
 if [ ! -d "openwrt" ]; then
