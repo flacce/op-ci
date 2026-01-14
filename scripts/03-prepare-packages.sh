@@ -225,6 +225,8 @@ git clone https://github.com/sbwml/v2ray-geodata package/custom/v2ray-geodata
 # 3.5. ⚡ v2dat 预编译 (利用 Host Go 环境)
 # v2dat 依赖新版 Go (cobra)，OpenWrt 内置 Go 版本可能过低，因此在 Host 环境预先编译
 echo "  ⚡ Compiling v2dat on Host..."
+# 清理可能存在的旧目录
+rm -rf _v2dat_source
 # 直接从源码仓库克隆，而不是从 sbwml 仓库提取 (后者只包含 Makefile)
 git clone https://github.com/urlesistiana/v2dat _v2dat_source
 pushd _v2dat_source > /dev/null
