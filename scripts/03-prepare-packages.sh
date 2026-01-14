@@ -223,11 +223,10 @@ cp -r _tmp_mosdns_repo/luci-app-mosdns package/custom/luci-app-mosdns
 git clone https://github.com/sbwml/v2ray-geodata package/custom/v2ray-geodata
 
 # 3.5. ⚡ v2dat 预编译 (利用 Host Go 环境)
-# v2dat 源码在 sbwml/luci-app-mosdns 仓库的 v2dat 目录下
+# v2dat 依赖新版 Go (cobra)，OpenWrt 内置 Go 版本可能过低，因此在 Host 环境预先编译
 echo "  ⚡ Compiling v2dat on Host..."
-cp -r _tmp_mosdns_repo/v2dat _v2dat_source
-rm -rf _tmp_mosdns_repo # 提取完毕，清理仓库
-
+# 直接从源码仓库克隆，而不是从 sbwml 仓库提取 (后者只包含 Makefile)
+git clone https://github.com/urlesistiana/v2dat _v2dat_source
 pushd _v2dat_source > /dev/null
 # 交叉编译
 GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o ../v2dat_bin .
