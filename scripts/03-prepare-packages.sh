@@ -220,30 +220,102 @@ UPDATE_PACKAGE "luci-theme-aurora" "eamonxg/luci-theme-aurora" "master" "name"
 # MosDNS (DNS 转发器)
 # 1. 移除源码自带的 mosdns 和 v2ray-geodata (防止冲突)
 find package/ feeds/ -name "mosdns" -o -name "v2ray-geodata" -o -name "luci-app-mosdns" | xargs rm -rf
-# 2. 克隆 sbwml 的版本 (v5 分支)
-git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/custom/luci-app-mosdns
+
+# 2. 从 sbwml 仓库提取界面部分 (luci-app-mosdns)
+echo "  ⚡ Setting up MosDNS..."
+git clone https://github.com/sbwml/luci-app-mosdns -b v5 _tmp_mosdns_repo
+# 提取界面
+cp -r _tmp_mosdns_repo/luci-app-mosdns package/custom/luci-app-mosdns
+# 提取 v2ray-geodata (如果仓库里有，或者单独克隆)
+# sbwml v5 分支里似乎有 v2dat，但 v2ray-geodata 是独立仓库
+rm -rf _tmp_mosdns_repo
+
+# 3. 单独克隆 v2ray-geodata
 git clone https://github.com/sbwml/v2ray-geodata package/custom/v2ray-geodata
 
-# Athena LED (雅典娜呼吸灯)
-UPDATE_PACKAGE "luci-app-athena-led" "haipengno1/luci-app-athena-led" "main" "name"
+# 4. 创建 MosDNS 核心包 (预编译模式)
+# 这一步完全独立于 sbwml 的源码，确保使用的是我们自定义的 Makefile
+mkdir -p package/custom/mosdns
+MOSDNS_DIR="package/custom/mosdns"
 
-# 🔧 优化 Athena LED 插件
-ATHENA_DIR="package/custom/luci-app-athena-led"
-if [ -d "$ATHENA_DIR" ]; then
-    echo "  ✨ 优化 Athena LED 插件..."
-    
-    # 1. 优化应用设置后的重启逻辑 (reload -> restart, exec -> sys.call)
-    # 原代码使用 reload 可能导致配置不生效，且 logging 方式冗余
-    sed -i 's/local output = luci.util.exec("\/etc\/init.d\/athena_led reload.*")/luci.sys.call("\/etc\/init.d\/athena_led restart >\/dev\/null 2>\&1")/' "$ATHENA_DIR/luasrc/model/cbi/athena_led/settings.lua"
-    sed -i '/luci.util.exec("logger/d' "$ATHENA_DIR/luasrc/model/cbi/athena_led/settings.lua"
-    
-    # 2. 移除 init.d 中冗余的 reload_service (Procd 会自动处理)
-    # 删除 reload_service(){ stop; start; } 块
-    sed -i '/reload_service()/,/^}/d' "$ATHENA_DIR/root/etc/init.d/athena_led"
-    
-    # 3. 确保脚本有执行权限 (二进制由 Makefile 负责下载和安装)
-    chmod +x "$ATHENA_DIR/root/etc/init.d/athena_led"
-fi
+# 自动获取最新 MosDNS 版本
+LATEST_MOSDNS=$(curl -s https://api.github.com/repos/IrineSistiana/mosdns/releases/latest | grep "tag_name" | cut -d '"' -f 4 | sed 's/^v//')
+if [ -z "$LATEST_MOSDNS" ]; then LATEST_MOSDNS="5.3.3"; fi
+
+echo "    -> Using MosDNS version: $LATEST_MOSDNS (Pre-compiled)"
+
+# 写入预编译 Makefile
+cat <<EOF > "$MOSDNS_DIR/Makefile"
+include \$(TOPDIR)/rules.mk
+
+PKG_NAME:=mosdns
+PKG_VERSION:=$LATEST_MOSDNS
+PKG_RELEASE:=1
+
+PKG_SOURCE:=\$(PKG_NAME)-linux-arm64.zip
+PKG_SOURCE_URL:=https://github.com/IrineSistiana/mosdns/releases/download/v\$(PKG_VERSION)/
+PKG_HASH:=skip
+
+include \$(INCLUDE_DIR)/package.mk
+
+define Package/mosdns
+  SECTION:=net
+  CATEGORY:=Network
+  TITLE:=MosDNS (Pre-compiled)
+  URL:=https://github.com/IrineSistiana/mosdns
+  DEPENDS:=@(aarch64) +ca-bundle
+endef
+
+define Package/mosdns/description
+  MosDNS is a DNS proxy server. (Pre-compiled binary from GitHub Releases)
+endef
+
+define Build/Prepare
+	# 手动解压到构建目录
+	mkdir -p \$(PKG_BUILD_DIR)
+	unzip -o \$(DL_DIR)/\$(PKG_SOURCE) -d \$(PKG_BUILD_DIR)
+	# 赋予执行权限
+	chmod +x \$(PKG_BUILD_DIR)/mosdns
+endef
+
+define Build/Compile
+	# Binary download, no compile
+endef
+
+define Package/mosdns/install
+	\$(INSTALL_DIR) \$(1)/usr/bin
+	\$(INSTALL_DIR) \$(1)/etc/mosdns
+	\$(INSTALL_DIR) \$(1)/etc/init.d
+	
+	# 从构建目录复制
+	\$(INSTALL_BIN) \$(PKG_BUILD_DIR)/mosdns \$(1)/usr/bin/mosdns
+	# 提供默认 init 脚本 (会被 luci-app 覆盖，但作为保底)
+	\$(INSTALL_BIN) ./files/mosdns.init \$(1)/etc/init.d/mosdns
+endef
+
+\$(eval \$(call BuildPackage,mosdns))
+EOF
+
+# 创建 files 目录和 init 脚本
+mkdir -p "$MOSDNS_DIR/files"
+cat <<EOF > "$MOSDNS_DIR/files/mosdns.init"
+#!/bin/sh /etc/rc.common
+
+START=90
+USE_PROCD=1
+PROG=/usr/bin/mosdns
+CONF=/etc/mosdns/config.yaml
+
+start_service() {
+	procd_open_instance
+	procd_set_param command \$PROG start -c \$CONF -d /etc/mosdns
+	procd_set_param user root
+	procd_set_param file \$CONF
+	procd_set_param respawn
+	procd_close_instance
+}
+EOF
+
 
 
 
