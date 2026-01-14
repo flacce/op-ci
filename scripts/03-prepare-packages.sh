@@ -356,6 +356,11 @@ endef\
 ' "$HOMEPROXY_MAKEFILE"
 fi
 
+# 🚨 最终清理：确保 feeds 中的 sing-box 被移除
+# 这一步非常重要，否则 OpenWrt 可能会优先编译 feeds 中的源码版本，导致构建失败
+echo -e "\n${GREEN}🧹 Final Cleanup: Removing conflicting feed packages...${NC}"
+rm -rf feeds/packages/net/sing-box
+
 echo ""
 echo -e "${GREEN}✅ 所有准备工作完成！${NC}"
 echo ""
