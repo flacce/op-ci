@@ -325,12 +325,10 @@ endef
 define Package/mosdns/install
 	\$(INSTALL_DIR) \$(1)/usr/bin
 	\$(INSTALL_DIR) \$(1)/etc/mosdns
-	\$(INSTALL_DIR) \$(1)/etc/init.d
+	# Init script is provided by luci-app-mosdns, skip installing it here
 	
 	# 从构建目录复制
 	\$(INSTALL_BIN) \$(PKG_BUILD_DIR)/mosdns \$(1)/usr/bin/mosdns
-	# 提供默认 init 脚本 (会被 luci-app 覆盖，但作为保底)
-	\$(INSTALL_BIN) ./files/mosdns.init \$(1)/etc/init.d/mosdns
 endef
 
 \$(eval \$(call BuildPackage,mosdns))
