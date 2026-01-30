@@ -110,6 +110,21 @@ UPDATE_PACKAGE "luci-app-athena-led" "haipengno1/luci-app-athena-led" "main" "na
 # ----------------------------------------------------------------------------
 echo -e "\n${GREEN}Processing: MosDNS & Dependencies (Source Build)${NC}"
 
+# 0. 清理 Go 模块缓存 (防止损坏缓存影响编译)
+echo "  🧹 清理 mosdns 相关 Go 模块缓存..."
+if [ -d "dl/go-mod-cache/github.com/IrineSistiana" ]; then
+    rm -rf dl/go-mod-cache/github.com/IrineSistiana
+    echo "  ✅ 已清理 mosdns Go 缓存"
+fi
+
+# 清理可能损坏的依赖缓存
+for module in "github.com/mdlayher/socket" "github.com/google/nftables" "golang.org/x/net" "golang.org/x/time" "go4.org/netipx"; do
+    if [ -d "dl/go-mod-cache/$module" ]; then
+        rm -rf "dl/go-mod-cache/$module"
+        echo "  ✅ 已清理 $module 缓存"
+    fi
+done
+
 # 1. 彻底清理冲突
 rm -rf package/custom/luci-app-mosdns
 rm -rf package/custom/mosdns

@@ -22,12 +22,36 @@ cd openwrt
 
 # 清理损坏的 Go 模块缓存
 echo "[1/4] 清理损坏的 Go 模块缓存..."
-if [ -d "dl/go-mod-cache/github.com/mdlayher/socket@v0.5.1" ]; then
-    rm -rf dl/go-mod-cache/github.com/mdlayher/socket@v0.5.1
-    echo "✅ 已清理损坏的 mdlayher/socket@v0.5.1 缓存"
-else
-    echo "ℹ️  无需清理，缓存目录不存在"
+
+# 清理 mosdns 相关的所有 Go 模块缓存
+if [ -d "dl/go-mod-cache/github.com/IrineSistiana" ]; then
+    echo "🧹 清理 mosdns (IrineSistiana) 相关缓存..."
+    rm -rf dl/go-mod-cache/github.com/IrineSistiana
+    echo "✅ 已清理 IrineSistiana/* 缓存"
 fi
+
+# 清理可能损坏的依赖包缓存
+CORRUPT_MODULES=(
+    "github.com/mdlayher/socket@v0.5.1"
+    "github.com/google/nftables"
+    "golang.org/x/net"
+    "golang.org/x/time"
+    "go4.org/netipx"
+)
+
+for module in "${CORRUPT_MODULES[@]}"; do
+    # 转换为目录路径格式 (处理 golang.org/x 等特殊路径)
+    module_path=$(echo "$module" | cut -d'@' -f1)
+    module_dir="dl/go-mod-cache/${module_path}"
+    
+    if [ -d "$module_dir" ]; then
+        echo "🧹 清理 ${module_path} 缓存..."
+        rm -rf "$module_dir"
+        echo "✅ 已清理 ${module_path} 缓存"
+    fi
+done
+
+echo "ℹ️  Go 模块缓存清理完成"
 
 # 使用 8 线程下载所有依赖包到 dl/ 目录
 echo "[2/4] 使用 8 线程下载依赖包..."
