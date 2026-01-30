@@ -20,16 +20,25 @@ echo "========================================="
 # 进入 OpenWrt 源码目录
 cd openwrt
 
+# 清理损坏的 Go 模块缓存
+echo "[1/4] 清理损坏的 Go 模块缓存..."
+if [ -d "dl/go-mod-cache/github.com/mdlayher/socket@v0.5.1" ]; then
+    rm -rf dl/go-mod-cache/github.com/mdlayher/socket@v0.5.1
+    echo "✅ 已清理损坏的 mdlayher/socket@v0.5.1 缓存"
+else
+    echo "ℹ️  无需清理，缓存目录不存在"
+fi
+
 # 使用 8 线程下载所有依赖包到 dl/ 目录
-echo "[1/3] 使用 8 线程下载依赖包..."
+echo "[2/4] 使用 8 线程下载依赖包..."
 make download -j8
 
 # 显示所有小于 1KB 的文件（可能是下载失败的空文件）
-echo "[2/3] 检查下载失败的文件（小于 1KB）..."
+echo "[3/4] 检查下载失败的文件（小于 1KB）..."
 find dl -size -1024c -exec ls -l {} \; 2>/dev/null || true
 
 # 删除所有小于 1KB 的文件（清理下载失败的残留）
-echo "[3/3] 清理下载失败的残留文件..."
+echo "[4/4] 清理下载失败的残留文件..."
 find dl -size -1024c -exec rm -f {} \; 2>/dev/null || true
 
 echo "✅ 依赖下载完成！"
