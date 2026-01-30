@@ -50,6 +50,11 @@ jobs:
         # 使用 LiBwrt 源码
         bash $GITHUB_WORKSPACE/scripts/02-clone-source.sh
 
+    - name: 🧹 清理损坏的 Go 模块缓存
+      run: |
+        rm -rf /workdir/openwrt/dl/go-mod-cache/github.com/mdlayher/socket@v0.5.1 2>/dev/null || true
+        echo "✅ 已清理损坏的 mdlayher/socket 缓存"
+
     - name: 💾 恢复缓存
       uses: actions/cache@v4
       with:

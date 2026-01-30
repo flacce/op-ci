@@ -1,0 +1,96 @@
+#
+# ============================================================================
+# 测试 mosdns 单独构建
+# 目的: 测试 mdlayher/socket 包缓存问题是否修复
+# ============================================================================
+
+name: 🔧 测试 mosdns 单独构建
+
+on:
+  workflow_dispatch:
+
+env:
+  REPO_URL: https://github.com/immortalwrt/immortalwrt
+  REPO_BRANCH: master
+  FEEDS_CONF: feeds.conf.default
+  CONFIG_FILE: seed.config
+  TZ: Asia/Shanghai
+
+jobs:
+  build-mosdns:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: 📥 检出仓库代码
+      uses: actions/checkout@v4
+
+    - name: 🔧 初始化编译环境
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        chmod +x scripts/*.sh
+        bash scripts/01-init-environment.sh
+
+    - name: 📦 克隆最新源码
+      working-directory: /workdir
+      run: bash $GITHUB_WORKSPACE/scripts/02-clone-source.sh
+
+    - name: 🧹 清理损坏的 Go 模块缓存
+      run: |
+        rm -rf /workdir/openwrt/dl/go-mod-cache/github.com/mdlayher/socket@v0.5.1 2>/dev/null || true
+        echo "✅ 已清理损坏的 mdlayher/socket 缓存"
+
+    - name: 💾 恢复缓存
+      uses: actions/cache@v4
+      with:
+        path: |
+          /workdir/openwrt/dl
+          /workdir/openwrt/.ccache
+          /workdir/openwrt/staging_dir
+        key: test-mosdns-cache-${{ hashFiles('seed.config') }}-${{ github.run_number }}
+        restore-keys: |
+          test-mosdns-cache-${{ hashFiles('seed.config') }}-
+          test-mosdns-cache-
+
+    - name: 🔄 刷新缓存时间戳
+      working-directory: /workdir
+      run: |
+        if [ -d "openwrt/staging_dir" ]; then
+          find openwrt/staging_dir -type d -name "stamp" -not -path "*target*" | while read -r dir; do
+            find "$dir" -type f -exec touch {} +
+          done
+        fi
+
+    - name: 📦 准备软件包环境
+      run: bash scripts/03-prepare-packages.sh
+
+    - name: 🧹 清理冲突插件
+      run: bash scripts/04-clean-conflicts.sh
+
+    - name: 📥 安装 Feeds
+      run: bash scripts/install-feeds.sh
+
+    - name: ⚙️ 加载配置文件
+      run: bash scripts/05-load-config.sh
+
+    - name: 📥 下载编译依赖
+      run: bash scripts/06-download-libs.sh
+
+    - name: 🔨 单独编译 mosdns
+      id: compile
+      working-directory: /workdir/openwrt
+      run: |
+        make package/custom/luci-app-mosdns/mosdns/compile V=s 2>&1 | tee /tmp/mosdns-build.log
+        if [ ${PIPESTATUS[0]} -eq 0 ]; then
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "status=failure" >> $GITHUB_OUTPUT
+          echo "❌ 构建失败"
+          exit 1
+        fi
+
+    - name: 📋 构建日志
+      if: always()
+      run: |
+        echo "### 构建日志" >> $GITHUB_STEP_SUMMARY
+        tail -100 /tmp/mosdns-build.log >> $GITHUB_STEP_SUMMARY
