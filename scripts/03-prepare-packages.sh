@@ -106,70 +106,16 @@ UPDATE_PACKAGE "luci-theme-aurora" "eamonxg/luci-theme-aurora" "master" "name"
 UPDATE_PACKAGE "luci-app-athena-led" "haipengno1/luci-app-athena-led" "main" "name"
 
 # ----------------------------------------------------------------------------
-# MosDNS & v2dat (回归官方推荐的源码编译模式)
+# HomeProxy 依赖修复 (使用官方 feeds 中的 sing-box)
 # ----------------------------------------------------------------------------
-echo -e "\n${GREEN}Processing: MosDNS & Dependencies (Source Build)${NC}"
-
-# 0. 清理 Go 模块缓存 (防止损坏缓存影响编译)
-echo "  🧹 清理 mosdns 相关 Go 模块缓存..."
-if [ -d "dl/go-mod-cache/github.com/IrineSistiana" ]; then
-    rm -rf dl/go-mod-cache/github.com/IrineSistiana
-    echo "  ✅ 已清理 mosdns Go 缓存"
-fi
-
-# 清理可能损坏的依赖缓存
-for module in "github.com/mdlayher/socket" "github.com/google/nftables" "golang.org/x/net" "golang.org/x/time" "go4.org/netipx"; do
-    if [ -d "dl/go-mod-cache/$module" ]; then
-        rm -rf "dl/go-mod-cache/$module"
-        echo "  ✅ 已清理 $module 缓存"
-    fi
-done
-
-# 1. 彻底清理冲突
-rm -rf package/custom/luci-app-mosdns
-rm -rf package/custom/mosdns
-rm -rf package/custom/v2dat
-rm -rf package/custom/v2ray-geodata
-rm -rf feeds/packages/net/mosdns
-rm -rf feeds/packages/net/v2ray-geodata
-
-# 2. 拉取 sbwml 的 luci-app-mosdns (包含 v5 分支界面)
-git clone https://github.com/sbwml/luci-app-mosdns -b v5 package/custom/luci-app-mosdns
-
-# 3. 拉取核心依赖 (mosdns, v2dat)
-# sbwml 的仓库里包含了 mosdns 和 v2dat 的 Makefile
-# 我们直接使用他在仓库里提供的源码定义，让 OpenWrt 自动去拉取 Go 源码并编译
-# 只需要把它们移动到 package 根目录能被识别到的地方即可
-# 注意：sbwml 仓库结构:
-#   luci-app-mosdns/
-#   mosdns/
-#   v2dat/
-# 我们已经把整个仓库 clone 到了 package/custom/luci-app-mosdns
-# OpenWrt 会自动扫描子目录。所以 mosdns 和 v2dat 的 Makefile 已经被包含在内了。
-# 我们不需要额外做任何事！只需要确保 feeds 里的同名包被删除了（上面已做）。
-
-# 4. 拉取 v2ray-geodata
-git clone https://github.com/sbwml/v2ray-geodata package/custom/v2ray-geodata
-
-# ----------------------------------------------------------------------------
-# sing-box (回归官方 Feeds 源码编译)
-# ----------------------------------------------------------------------------
-# 之前的预编译模式导致了兼容性问题，现在直接使用官方 feeds 中的 sing-box 源码。
-# 这样虽然编译较慢，但能保证与当前系统的 libc 和内核完全兼容。
-echo -e "\n${GREEN}Processing: sing-box (Using Official Feeds)${NC}"
-rm -rf package/custom/sing-box
-
-# --- homeproxy 修复 ---
-# 修改 HomeProxy 依赖，允许它使用 sing-box 变体 (如 tiny)
+echo -e "\n${GREEN}🔧 修复 HomeProxy 依赖...${NC}"
 HOMEPROXY_MAKEFILE="package/custom/homeproxy/Makefile"
 if [ -f "$HOMEPROXY_MAKEFILE" ]; then
-    echo "  🔧 修复 homeproxy 依赖..."
+    echo "  -> 修改 HomeProxy 依赖使用官方 feeds 中的 sing-box..."
     # 移除原有的强依赖
-    sed -i '/^\s*+sing-box/d' "$HOMEPROXY_MAKEFILE"
+    sed -i '/^\s*+sing-box/d' "$HOMEPROXY_MAKEFILE" 2>/dev/null || true
     
-    # 重写 Package 定义，依然依赖 sing-box (官方包名为 sing-box，安装后提供 /usr/bin/sing-box)
-    # 如果想用 tiny 版，可以在 .config 中设置 CONFIG_PACKAGE_sing-box-tiny=y
-    # 但 HomeProxy 只需要 executable，所以这里写 +sing-box 是安全的
+    # 重写 Package 定义，依赖官方 feeds 中的 sing-box
     sed -i '/^include $(TOPDIR)\/feeds\/luci\/luci.mk/i \
 define Package/$(PKG_NAME)\
   SECTION:=luci\
@@ -179,15 +125,78 @@ define Package/$(PKG_NAME)\
   PKGARCH:=$(LUCI_PKGARCH)\
   DEPENDS:=+sing-box +firewall4 +kmod-nft-tproxy +ucode-mod-digest\
 endef\
-' "$HOMEPROXY_MAKEFILE"
+' "$HOMEPROXY_MAKEFILE" 2>/dev/null || true
+    
+    echo "  ✅ HomeProxy 依赖已修复"
 fi
 
-# 🚨 最终清理
-echo -e "\n${GREEN}🧹 Final Cleanup...${NC}"
-# 注意: 不再删除 feeds/packages/net/sing-box，因为我们要用它
-rm -rf feeds/packages/net/v2ray-geodata
-# 只有当我们用 sbwml 的 mosdns 时才需要删 feeds 里的
-rm -rf feeds/packages/net/mosdns
+# ----------------------------------------------------------------------------
+# [3] 安装核心依赖 (MosDNS, v2dat, v2ray-geodata)
+# ----------------------------------------------------------------------------
+echo -e "\n${GREEN}[3/3] 安装核心依赖...${NC}"
+
+# 清理所有相关缓存和冲突
+echo "  🧹 清理 mosdns 相关缓存和冲突..."
+rm -rf package/custom/luci-app-mosdns 2>/dev/null || true
+rm -rf package/custom/mosdns 2>/dev/null || true
+rm -rf package/custom/v2dat 2>/dev/null || true
+rm -rf package/custom/v2ray-geodata 2>/dev/null || true
+rm -rf feeds/packages/net/mosdns 2>/dev/null || true
+rm -rf feeds/packages/net/v2ray-geodata 2>/dev/null || true
+
+# 清理 Go 模块缓存
+for module in "github.com/IrineSistiana" "github.com/mdlayher/socket" "github.com/google/nftables" "golang.org/x/net" "golang.org/x/time" "go4.org/netipx"; do
+    if [ -d "dl/go-mod-cache/$module" ]; then
+        rm -rf "dl/go-mod-cache/$module"
+        echo "  ✅ 已清理 $module 缓存"
+    fi
+done
+
+# 使用 UPDATE_PACKAGE 统一安装所有包
+echo -e "\n${GREEN}安装 MosDNS 及相关组件...${NC}"
+
+# 1. 安装 luci-app-mosdns (包含 mosdns 和 v2dat)
+UPDATE_PACKAGE "luci-app-mosdns" "sbwml/luci-app-mosdns" "v5" "name" "mosdns v2dat"
+
+# 2. 安装 v2ray-geodata
+UPDATE_PACKAGE "v2ray-geodata" "sbwml/v2ray-geodata" "main" "name"
+
+# 3. 修复 mosdns 版本兼容性问题
+echo -e "\n${GREEN}🔧 处理 mosdns 版本兼容性...${NC}"
+MOSDNS_MAKEFILE="package/custom/luci-app-mosdns/mosdns/Makefile"
+if [ -f "$MOSDNS_MAKEFILE" ]; then
+    echo "  -> 检测到 mosdns v5.3.3，需要 Go 1.22+..."
+    echo "  -> 检查当前 Go 版本..."
+    
+    # 检查当前 Go 版本
+    if command -v go &> /dev/null; then
+        GO_VERSION=$(go version | grep -oP 'go\d+\.\d+')
+        echo "  -> 当前 Go 版本: $GO_VERSION"
+        
+        # 如果 Go 版本低于 1.22，降级 mosdns 到 v5.1.3
+        if [[ "$GO_VERSION" < "go1.22" ]]; then
+            echo "  -> Go 版本过低，降级 mosdns 到 v5.1.3..."
+            sed -i 's/PKG_VERSION:=.*/PKG_VERSION:=5.1.3/g' "$MOSDNS_MAKEFILE" 2>/dev/null || true
+            sed -i 's/PKG_HASH:=.*/PKG_HASH:=a863848ebb3261e9e8a5e6b8b70075496ea3a4e1d8e67c04ff5f3f3783166f23/g' "$MOSDNS_MAKEFILE" 2>/dev/null || true
+            echo "  ✅ mosdns 已降级到 v5.1.3 (兼容 Go $GO_VERSION)"
+        else
+            echo "  ✅ Go 版本 $GO_VERSION 支持 mosdns v5.3.3"
+        fi
+    else
+        echo "  ⚠️  未检测到 Go，假设使用系统默认版本，降级 mosdns 到 v5.1.3..."
+        sed -i 's/PKG_VERSION:=.*/PKG_VERSION:=5.1.3/g' "$MOSDNS_MAKEFILE" 2>/dev/null || true
+        sed -i 's/PKG_HASH:=.*/PKG_HASH:=a863848ebb3261e9e8a5e6b70075496ea3a4e1d8e67c04ff5f3f3783166f23/g' "$MOSDNS_MAKEFILE" 2>/dev/null || true
+        echo "  ✅ mosdns 已降级到 v5.1.3"
+    fi
+fi
+
+# ----------------------------------------------------------------------------
+# 清理 feeds 中的冲突包
+# ----------------------------------------------------------------------------
+echo -e "\n${GREEN}🧹 清理 feeds 冲突包...${NC}"
+rm -rf feeds/packages/net/v2ray-geodata 2>/dev/null || true
+rm -rf feeds/packages/net/mosdns 2>/dev/null || true
+# 注意: 保留 feeds/packages/net/sing-box，使用官方 feeds 版本
 
 echo ""
 echo -e "${GREEN}✅ 所有准备工作完成！${NC}"
