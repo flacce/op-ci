@@ -159,7 +159,7 @@ echo -e "\n${GREEN}安装 MosDNS 及相关组件...${NC}"
 UPDATE_PACKAGE "luci-app-mosdns" "sbwml/luci-app-mosdns" "v5" "name" "mosdns v2dat"
 
 # 2. 安装 v2ray-geodata
-UPDATE_PACKAGE "v2ray-geodata" "sbwml/v2ray-geodata" "main" "name"
+UPDATE_PACKAGE "v2ray-geodata" "sbwml/v2ray-geodata" "master" "name"
 
 # 3. 修复 mosdns 版本兼容性问题
 echo -e "\n${GREEN}🔧 处理 mosdns 版本兼容性...${NC}"
